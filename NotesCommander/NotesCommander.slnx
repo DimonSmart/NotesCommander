@@ -2,4 +2,5 @@
   <Project Path="NotesCommander.AppHost/NotesCommander.AppHost.csproj" />
   <Project Path="NotesCommander.ServiceDefaults/NotesCommander.ServiceDefaults.csproj" />
   <Project Path="NotesCommander/NotesCommander.csproj" />
+  <Project Path="NotesCommander.Backend/NotesCommander.Backend.csproj" />
 </Solution>

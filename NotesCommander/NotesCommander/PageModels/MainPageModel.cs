@@ -11,6 +11,7 @@ using Microsoft.Maui.Media;
 using Microsoft.Maui.Storage;
 using NotesCommander.Models;
 using NotesCommander.Pages;
+using NotesCommander.Services;
 
 namespace NotesCommander.PageModels;
 
@@ -18,6 +19,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
 {
         private readonly IVoiceNoteService _voiceNoteService;
         private readonly ModalErrorHandler _errorHandler;
+        private readonly NoteSyncService _noteSyncService;
         private readonly IServiceProvider _serviceProvider;
         private readonly Timer _recordingTimer = new(1000);
         private bool _isNavigatedTo;
@@ -72,11 +74,12 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
         public bool HasDraftPhotos => DraftPhotoPaths.Count > 0;
 
-        public MainPageModel(IVoiceNoteService voiceNoteService, ModalErrorHandler errorHandler, IServiceProvider serviceProvider)
+        public MainPageModel(IVoiceNoteService voiceNoteService, ModalErrorHandler errorHandler, IServiceProvider serviceProvider, NoteSyncService noteSyncService)
         {
                 _voiceNoteService = voiceNoteService;
                 _errorHandler = errorHandler;
                 _serviceProvider = serviceProvider;
+                _noteSyncService = noteSyncService;
 
                 DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
 
@@ -255,7 +258,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                                 CategoryLabel = string.IsNullOrWhiteSpace(DraftCategoryLabel)
                                         ? "Входящие"
                                         : DraftCategoryLabel.Trim(),
-                                RecognitionStatus = VoiceNoteRecognitionStatus.Pending,
+                                RecognitionStatus = VoiceNoteRecognitionStatus.InQueue,
                                 Photos = DraftPhotoPaths
                                         .Select(path => new VoiceNotePhoto
                                         {
@@ -270,6 +273,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
                         var saved = await _voiceNoteService.SaveAsync(note);
                         VoiceNotes.Insert(0, saved);
+                        _noteSyncService.TrackForUpload(saved);
 
                         await AppShell.DisplayToastAsync("Голосовая заметка сохранена");
                         PrepareDraft();
