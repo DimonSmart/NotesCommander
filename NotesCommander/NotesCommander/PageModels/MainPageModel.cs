@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Timers;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Media;
+using Microsoft.Maui.Storage;
 using NotesCommander.Models;
 using NotesCommander.Pages;
 
@@ -254,13 +256,20 @@ public partial class MainPageModel : ObservableObject, IDisposable
                                         ? "Входящие"
                                         : DraftCategoryLabel.Trim(),
                                 RecognitionStatus = VoiceNoteRecognitionStatus.Pending,
-                                Photos = DraftPhotoPaths.ToList(),
-                                AudioFilePath = $"voice-note-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.m4a",
-                                CreatedAt = DateTime.Now
+                                Photos = DraftPhotoPaths
+                                        .Select(path => new VoiceNotePhoto
+                                        {
+                                                FilePath = path,
+                                                CreatedAt = DateTime.UtcNow
+                                        })
+                                        .ToList(),
+                                AudioFilePath = CreateDraftAudioPath(),
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
                         };
 
-                        await _voiceNoteService.SaveAsync(note);
-                        VoiceNotes.Insert(0, note);
+                        var saved = await _voiceNoteService.SaveAsync(note);
+                        VoiceNotes.Insert(0, saved);
 
                         await AppShell.DisplayToastAsync("Голосовая заметка сохранена");
                         PrepareDraft();
@@ -332,6 +341,12 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
                 var duration = DateTimeOffset.UtcNow - _recordingStartedAt.Value;
                 MainThread.BeginInvokeOnMainThread(() => RecordingDuration = duration);
+        }
+
+        private static string CreateDraftAudioPath()
+        {
+                var fileName = $"voice-note-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.m4a";
+                return Path.Combine(FileSystem.AppDataDirectory, fileName);
         }
 
         private static async Task<PermissionStatus> RequestPermissionAsync<TPermission>() where TPermission : Permissions.BasePermission, new()

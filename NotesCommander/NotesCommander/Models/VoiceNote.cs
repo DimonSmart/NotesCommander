@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace NotesCommander.Models;
@@ -12,26 +11,48 @@ public enum VoiceNoteRecognitionStatus
         Failed
 }
 
+public enum VoiceNoteSyncStatus
+{
+        LocalOnly,
+        Uploading,
+        Synced,
+        Failed
+}
+
 public class VoiceNote
 {
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public int LocalId { get; set; }
 
         public string Title { get; set; } = string.Empty;
 
-        public TimeSpan Duration { get; set; }
-                = TimeSpan.Zero;
+        public string AudioFilePath { get; set; } = string.Empty;
+
+        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
+
+        public string? OriginalText { get; set; }
+                = string.Empty;
+
+        public string? RecognizedText { get; set; }
+                = string.Empty;
+
+        public string CategoryLabel { get; set; } = "Входящие";
 
         public VoiceNoteRecognitionStatus RecognitionStatus { get; set; }
                 = VoiceNoteRecognitionStatus.Pending;
 
-        public string CategoryLabel { get; set; } = "Входящие";
+        public VoiceNoteSyncStatus SyncStatus { get; set; }
+                = VoiceNoteSyncStatus.LocalOnly;
 
-        public string? AudioFilePath { get; set; }
+        public string? ServerId { get; set; }
                 = string.Empty;
 
-        public List<string> Photos { get; set; } = [];
+        public List<VoiceNotePhoto> Photos { get; set; } = [];
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public List<VoiceNoteTag> Tags { get; set; } = [];
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public string DurationDisplay => Duration == TimeSpan.Zero
                 ? "00:00"
@@ -45,7 +66,7 @@ public class VoiceNote
                 _ => "Ожидает очереди"
         };
 
-        public string? PhotoPreviewPath => Photos.FirstOrDefault();
+        public string? PhotoPreviewPath => Photos.FirstOrDefault()?.FilePath;
 
         public bool HasPhotoPreview => !string.IsNullOrEmpty(PhotoPreviewPath);
 
@@ -63,4 +84,58 @@ public class VoiceNote
                         };
                 }
         }
+}
+
+public class VoiceNotePhoto
+{
+        public int Id { get; set; }
+
+        public int VoiceNoteId { get; set; }
+
+        public string FilePath { get; set; } = string.Empty;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class VoiceNoteTag
+{
+        public int Id { get; set; }
+
+        public int VoiceNoteId { get; set; }
+
+        public string Value { get; set; } = string.Empty;
+}
+
+public class VoiceNoteSeed
+{
+        public string Title { get; set; } = string.Empty;
+
+        public string AudioFile { get; set; } = string.Empty;
+
+        public double DurationSeconds { get; set; }
+                = 0;
+
+        public string? OriginalText { get; set; }
+                = string.Empty;
+
+        public string? RecognizedText { get; set; }
+                = string.Empty;
+
+        public string CategoryLabel { get; set; } = "Входящие";
+
+        public VoiceNoteRecognitionStatus RecognitionStatus { get; set; }
+                = VoiceNoteRecognitionStatus.Pending;
+
+        public List<string> Photos { get; set; } = [];
+
+        public List<string> Tags { get; set; } = [];
+}
+
+public class VoiceNotesSeedPayload
+{
+        public List<Category> Categories { get; set; } = [];
+
+        public List<Tag> Tags { get; set; } = [];
+
+        public List<VoiceNoteSeed> Notes { get; set; } = [];
 }

@@ -1,61 +1,51 @@
 {
-    "Projects": [
-        {
-            "Name": "Balance",
-            "Description": "Improve work-life balance.",
-            "Icon": "\uea28",
-            "Category": { "Title": "work", "Color": "#3068df" },
-            "Tags": [
-                { "Title": "work", "Color": "#3068df" }
-            ],
-            "Tasks": [
-                { "Title": "Survey Employees", "IsCompleted": false },
-                { "Title": "Analyze Survey Results", "IsCompleted": false },
-                { "Title": "Develop Action Plan", "IsCompleted": false }
-            ]
-        },
-        {
-            "Name": "Personal",
-            "Description": "Learn to speak another language.",
-            "Icon": "\uf8fe",
-            "Category": { "Title": "education", "Color": "#8800FF" },
-            "Tags": [
-                { "Title": "personal", "Color": "#FF4500" }
-            ],
-            "Tasks": [
-                { "Title": "Read a Book", "IsCompleted": false },
-                { "Title": "Attend a Workshop", "IsCompleted": false },
-                { "Title": "Practice a Hobby", "IsCompleted": false }
-            ]
-        },
-        {
-            "Name": "Fitness",
-            "Description": "Promote health and fitness activities",
-            "Icon": "\uf837",
-            "Category": { "Title": "self", "Color": "#FF3300" },
-            "Tags": [
-                { "Title": "health", "Color": "#32CD32" }
-            ],
-            "Tasks": [
-                { "Title": "Morning Yoga", "IsCompleted": false },
-                { "Title": "Evening Run", "IsCompleted": false },
-                { "Title": "Healthy Cooking Class", "IsCompleted": false }
-            ]
-        },
-        {
-            "Name": "Family and Friends",
-            "Description": "Strengthen relationships with family and friends.",
-            "Icon": "\uf5a9",
-            "Category": { "Title": "relationships", "Color": "#FF9900" },
-            "Tags": [
-                { "Title": "family", "Color": "#1E90FF" },
-                { "Title": "friends", "Color": "#FF69B4" }
-            ],
-            "Tasks": [
-                { "Title": "Plan a Family Reunion", "IsCompleted": false },
-                { "Title": "Organize a Friends' Get-together", "IsCompleted": false },
-                { "Title": "Weekly Phone Calls", "IsCompleted": false }
-            ]
-        }
-    ]
+  "Categories": [
+    { "Title": "Работа", "Color": "#3068df" },
+    { "Title": "Личное", "Color": "#f97316" },
+    { "Title": "Идеи", "Color": "#10b981" }
+  ],
+  "Tags": [
+    { "Title": "интервью", "Color": "#9333ea" },
+    { "Title": "подкаст", "Color": "#14b8a6" },
+    { "Title": "семья", "Color": "#ef4444" }
+  ],
+  "Notes": [
+    {
+      "Title": "Интервью с клиентом",
+      "AudioFile": "seed-audio/interview-1.m4a",
+      "DurationSeconds": 183,
+      "OriginalText": "Эта заметка создана для проверки нового репозитория.",
+      "RecognizedText": "Расшифровка интервью с основными инсайтами.",
+      "CategoryLabel": "Работа",
+      "RecognitionStatus": "Completed",
+      "Photos": [
+        "seed-photos/interview-note.jpg"
+      ],
+      "Tags": ["интервью", "подкаст"]
+    },
+    {
+      "Title": "Идея для подкаста",
+      "AudioFile": "seed-audio/podcast-idea.m4a",
+      "DurationSeconds": 92,
+      "OriginalText": "Разговор о новой рубрике подкаста.",
+      "RecognizedText": null,
+      "CategoryLabel": "Идеи",
+      "RecognitionStatus": "Processing",
+      "Photos": [],
+      "Tags": ["подкаст"]
+    },
+    {
+      "Title": "Семейный список дел",
+      "AudioFile": "seed-audio/family-plan.m4a",
+      "DurationSeconds": 210,
+      "OriginalText": null,
+      "RecognizedText": null,
+      "CategoryLabel": "Личное",
+      "RecognitionStatus": "Pending",
+      "Photos": [
+        "seed-photos/family.jpg"
+      ],
+      "Tags": ["семья"]
+    }
+  ]
 }
