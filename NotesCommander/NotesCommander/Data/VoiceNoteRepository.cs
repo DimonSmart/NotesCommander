@@ -95,7 +95,7 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote WHE
                 await EnsureInitializedAsync(cancellationToken);
                 await using var connection = new SqliteConnection(Constants.DatabasePath);
                 await connection.OpenAsync(cancellationToken);
-                await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+                await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
 
                 note.AudioFilePath = EnsureMediaPath(note.AudioFilePath);
                 foreach (var photo in note.Photos)

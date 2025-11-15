@@ -9,9 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NotesCommander\NotesCommander.csproj">
+    <ProjectReference Include="..\NotesCommander.Backend\NotesCommander.Backend.csproj" />
+    <!-- MAUI project cannot be referenced from AppHost as it doesn't support net10.0 target -->
+    <!-- <ProjectReference Include="..\NotesCommander\NotesCommander.csproj">
       <SetTargetFramework>TargetFramework=net10.0</SetTargetFramework>
-    </ProjectReference>
+    </ProjectReference> -->
   </ItemGroup>
 
 </Project>
