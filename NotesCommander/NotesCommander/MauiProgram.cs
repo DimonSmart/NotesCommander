@@ -1,5 +1,7 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
+using NotesCommander.Pages;
+using NotesCommander.Services;
 using Syncfusion.Maui.Toolkit.Hosting;
 
 namespace NotesCommander;
@@ -43,18 +45,20 @@ public static class MauiProgram
 		builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
-		builder.Services.AddSingleton<ProjectRepository>();
-		builder.Services.AddSingleton<TaskRepository>();
-		builder.Services.AddSingleton<CategoryRepository>();
-		builder.Services.AddSingleton<TagRepository>();
-		builder.Services.AddSingleton<SeedDataService>();
-		builder.Services.AddSingleton<ModalErrorHandler>();
-		builder.Services.AddSingleton<MainPageModel>();
-		builder.Services.AddSingleton<ProjectListPageModel>();
-		builder.Services.AddSingleton<ManageMetaPageModel>();
+                builder.Services.AddSingleton<ProjectRepository>();
+                builder.Services.AddSingleton<TaskRepository>();
+                builder.Services.AddSingleton<CategoryRepository>();
+                builder.Services.AddSingleton<TagRepository>();
+                builder.Services.AddSingleton<SeedDataService>();
+                builder.Services.AddSingleton<ModalErrorHandler>();
+                builder.Services.AddSingleton<IVoiceNoteService, VoiceNoteService>();
+                builder.Services.AddSingleton<MainPageModel>();
+                builder.Services.AddSingleton<ProjectListPageModel>();
+                builder.Services.AddSingleton<ManageMetaPageModel>();
+                builder.Services.AddTransient<NoteCapturePage>();
 
-		builder.Services.AddTransientWithShellRoute<ProjectDetailPage, ProjectDetailPageModel>("project");
-		builder.Services.AddTransientWithShellRoute<TaskDetailPage, TaskDetailPageModel>("task");
+                builder.Services.AddTransientWithShellRoute<ProjectDetailPage, ProjectDetailPageModel>("project");
+                builder.Services.AddTransientWithShellRoute<TaskDetailPage, TaskDetailPageModel>("task");
 		
 		return builder.Build();
 	}

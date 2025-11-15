@@ -1,176 +1,347 @@
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Timers;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
+using Microsoft.Maui.Media;
 using NotesCommander.Models;
+using NotesCommander.Pages;
 
 namespace NotesCommander.PageModels;
 
-public partial class MainPageModel : ObservableObject, IProjectTaskPageModel
+public partial class MainPageModel : ObservableObject, IDisposable
 {
-	private bool _isNavigatedTo;
-	private bool _dataLoaded;
-	private readonly ProjectRepository _projectRepository;
-	private readonly TaskRepository _taskRepository;
-	private readonly CategoryRepository _categoryRepository;
-	private readonly ModalErrorHandler _errorHandler;
-	private readonly SeedDataService _seedDataService;
+        private readonly IVoiceNoteService _voiceNoteService;
+        private readonly ModalErrorHandler _errorHandler;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly Timer _recordingTimer = new(1000);
+        private bool _isNavigatedTo;
+        private bool _dataLoaded;
+        private DateTimeOffset? _recordingStartedAt;
 
-	[ObservableProperty]
-	private List<CategoryChartData> _todoCategoryData = [];
+        [ObservableProperty]
+        private ObservableCollection<VoiceNote> voiceNotes = new();
 
-	[ObservableProperty]
-	private List<Brush> _todoCategoryColors = [];
+        [ObservableProperty]
+        private bool isBusy;
 
-	[ObservableProperty]
-	private List<ProjectTask> _tasks = [];
+        [ObservableProperty]
+        private bool isRefreshing;
 
-	[ObservableProperty]
-	private List<Project> _projects = [];
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PermissionsStatusText))]
+        private bool hasMicrophonePermission;
 
-	[ObservableProperty]
-	bool _isBusy;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PermissionsStatusText))]
+        private bool hasMediaPermission;
 
-	[ObservableProperty]
-	bool _isRefreshing;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RecordingStatusText))]
+        [NotifyPropertyChangedFor(nameof(RecordingButtonText))]
+        private bool isRecording;
 
-	[ObservableProperty]
-	private string _today = DateTime.Now.ToString("dddd, MMM d");
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RecordingDurationDisplay))]
+        private TimeSpan recordingDuration;
 
-	[ObservableProperty]
-	private Project? selectedProject;
+        [ObservableProperty]
+        private string? draftTitle;
 
-	public bool HasCompletedTasks
-		=> Tasks?.Any(t => t.IsCompleted) ?? false;
+        [ObservableProperty]
+        private string draftCategoryLabel = "Входящие";
 
-	public MainPageModel(SeedDataService seedDataService, ProjectRepository projectRepository,
-		TaskRepository taskRepository, CategoryRepository categoryRepository, ModalErrorHandler errorHandler)
-	{
-		_projectRepository = projectRepository;
-		_taskRepository = taskRepository;
-		_categoryRepository = categoryRepository;
-		_errorHandler = errorHandler;
-		_seedDataService = seedDataService;
-	}
+        public ObservableCollection<string> DraftPhotoPaths { get; } = new();
 
-	private async Task LoadData()
-	{
-		try
-		{
-			IsBusy = true;
+        public string PermissionsStatusText => HasMicrophonePermission && HasMediaPermission
+                ? "Разрешения получены"
+                : "Нужно разрешить доступ к микрофону и медиа";
 
-			Projects = await _projectRepository.ListAsync();
+        public string RecordingStatusText => IsRecording ? "Идёт запись" : "Ожидание записи";
 
-			var chartData = new List<CategoryChartData>();
-			var chartColors = new List<Brush>();
+        public string RecordingButtonText => IsRecording ? "Остановить запись" : "Начать запись";
 
-			var categories = await _categoryRepository.ListAsync();
-			foreach (var category in categories)
-			{
-				chartColors.Add(category.ColorBrush);
+        public string RecordingDurationDisplay => RecordingDuration == TimeSpan.Zero
+                ? "00:00"
+                : RecordingDuration.ToString("mm\\:ss");
 
-				var ps = Projects.Where(p => p.CategoryID == category.ID).ToList();
-				int tasksCount = ps.SelectMany(p => p.Tasks).Count();
+        public bool HasDraftPhotos => DraftPhotoPaths.Count > 0;
 
-				chartData.Add(new(category.Title, tasksCount));
-			}
+        public MainPageModel(IVoiceNoteService voiceNoteService, ModalErrorHandler errorHandler, IServiceProvider serviceProvider)
+        {
+                _voiceNoteService = voiceNoteService;
+                _errorHandler = errorHandler;
+                _serviceProvider = serviceProvider;
 
-			TodoCategoryData = chartData;
-			TodoCategoryColors = chartColors;
+                DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
 
-			Tasks = await _taskRepository.ListAsync();
-		}
-		finally
-		{
-			IsBusy = false;
-			OnPropertyChanged(nameof(HasCompletedTasks));
-		}
-	}
+                _recordingTimer.AutoReset = true;
+                _recordingTimer.Elapsed += (_, _) => UpdateRecordingDuration();
+        }
 
-	private async Task InitData(SeedDataService seedDataService)
-	{
-		bool isSeeded = Preferences.Default.ContainsKey("is_seeded");
+        [RelayCommand]
+        private void NavigatedTo() => _isNavigatedTo = true;
 
-		if (!isSeeded)
-		{
-			await seedDataService.LoadSeedDataAsync();
-		}
+        [RelayCommand]
+        private void NavigatedFrom() => _isNavigatedTo = false;
 
-		Preferences.Default.Set("is_seeded", true);
-		await Refresh();
-	}
+        [RelayCommand]
+        private async Task Appearing()
+        {
+                if (!_dataLoaded)
+                {
+                        await Refresh();
+                        _dataLoaded = true;
+                }
+                else if (!_isNavigatedTo)
+                {
+                        await Refresh();
+                }
+        }
 
-	[RelayCommand]
-	private async Task Refresh()
-	{
-		try
-		{
-			IsRefreshing = true;
-			await LoadData();
-		}
-		catch (Exception e)
-		{
-			_errorHandler.HandleError(e);
-		}
-		finally
-		{
-			IsRefreshing = false;
-		}
-	}
+        [RelayCommand]
+        private async Task Refresh()
+        {
+                try
+                {
+                        IsRefreshing = true;
+                        await LoadNotesAsync();
+                }
+                catch (Exception ex)
+                {
+                        _errorHandler.HandleError(ex);
+                }
+                finally
+                {
+                        IsRefreshing = false;
+                }
+        }
 
-	[RelayCommand]
-	private void NavigatedTo() =>
-		_isNavigatedTo = true;
+        [RelayCommand]
+        private async Task AddVoiceNote()
+        {
+                PrepareDraft();
+                var capturePage = _serviceProvider.GetRequiredService<NoteCapturePage>();
+                await Shell.Current.Navigation.PushModalAsync(capturePage);
+        }
 
-	[RelayCommand]
-	private void NavigatedFrom() =>
-		_isNavigatedTo = false;
+        [RelayCommand]
+        private async Task RequestPermissions()
+        {
+                try
+                {
+                        var microphone = await RequestPermissionAsync<Permissions.Microphone>();
+                        HasMicrophonePermission = microphone == PermissionStatus.Granted;
 
-	[RelayCommand]
-	private async Task Appearing()
-	{
-		if (!_dataLoaded)
-		{
-			await InitData(_seedDataService);
-			_dataLoaded = true;
-			await Refresh();
-		}
-		// This means we are being navigated to
-		else if (!_isNavigatedTo)
-		{
-			await Refresh();
-		}
-	}
+                        PermissionStatus mediaStatus;
+                        if (DeviceInfo.Current.Platform == DevicePlatform.Android)
+                        {
+                                mediaStatus = await RequestPermissionAsync<Permissions.StorageWrite>();
+                        }
+                        else
+                        {
+                                mediaStatus = await RequestPermissionAsync<Permissions.Photos>();
+                        }
 
-	[RelayCommand]
-	private Task TaskCompleted(ProjectTask task)
-	{
-		OnPropertyChanged(nameof(HasCompletedTasks));
-		return _taskRepository.SaveItemAsync(task);
-	}
+                        HasMediaPermission = mediaStatus == PermissionStatus.Granted;
+                }
+                catch (Exception ex)
+                {
+                        _errorHandler.HandleError(ex);
+                }
+        }
 
-	[RelayCommand]
-	private Task AddTask()
-		=> Shell.Current.GoToAsync($"task");
+        [RelayCommand]
+        private async Task ToggleRecording()
+        {
+                if (!HasMicrophonePermission)
+                {
+                        await AppShell.DisplaySnackbarAsync("Сначала предоставьте доступ к микрофону");
+                        return;
+                }
 
-	[RelayCommand]
-	private Task? NavigateToProject(Project project)
-		=> project is null ? null : Shell.Current.GoToAsync($"project?id={project.ID}");
+                if (IsRecording)
+                {
+                        StopRecording();
+                        return;
+                }
 
-	[RelayCommand]
-	private Task NavigateToTask(ProjectTask task)
-		=> Shell.Current.GoToAsync($"task?id={task.ID}");
+                StartRecording();
+        }
 
-	[RelayCommand]
-	private async Task CleanTasks()
-	{
-		var completedTasks = Tasks.Where(t => t.IsCompleted).ToList();
-		foreach (var task in completedTasks)
-		{
-			await _taskRepository.DeleteItemAsync(task);
-			Tasks.Remove(task);
-		}
+        [RelayCommand]
+        private async Task PickPhoto()
+        {
+                if (!HasMediaPermission)
+                {
+                        await AppShell.DisplaySnackbarAsync("Нужно разрешение на фото или память");
+                        return;
+                }
 
-		OnPropertyChanged(nameof(HasCompletedTasks));
-		Tasks = new(Tasks);
-		await AppShell.DisplayToastAsync("All cleaned up!");
-	}
+                try
+                {
+                        var photo = await MediaPicker.Default.PickPhotoAsync();
+                        if (photo is not null)
+                        {
+                                DraftPhotoPaths.Add(photo.FullPath);
+                        }
+                }
+                catch (FeatureNotSupportedException)
+                {
+                        await AppShell.DisplaySnackbarAsync("Выбор фото не поддерживается на этом устройстве");
+                }
+                catch (Exception ex)
+                {
+                        _errorHandler.HandleError(ex);
+                }
+        }
+
+        [RelayCommand]
+        private async Task CapturePhoto()
+        {
+                if (!HasMediaPermission)
+                {
+                        await AppShell.DisplaySnackbarAsync("Нужно разрешение на фото или память");
+                        return;
+                }
+
+                try
+                {
+                        if (!MediaPicker.Default.IsCaptureSupported)
+                        {
+                                await AppShell.DisplaySnackbarAsync("Камера недоступна");
+                                return;
+                        }
+
+                        var photo = await MediaPicker.Default.CapturePhotoAsync();
+                        if (photo is not null)
+                        {
+                                DraftPhotoPaths.Add(photo.FullPath);
+                        }
+                }
+                catch (FeatureNotSupportedException)
+                {
+                        await AppShell.DisplaySnackbarAsync("Съёмка фото не поддерживается на этом устройстве");
+                }
+                catch (Exception ex)
+                {
+                        _errorHandler.HandleError(ex);
+                }
+        }
+
+        [RelayCommand]
+        private async Task SaveMetadata()
+        {
+                try
+                {
+                        if (IsRecording)
+                        {
+                                StopRecording();
+                        }
+
+                        var title = string.IsNullOrWhiteSpace(DraftTitle)
+                                ? $"Заметка {DateTime.Now:HH:mm}"
+                                : DraftTitle.Trim();
+
+                        var note = new VoiceNote
+                        {
+                                Title = title,
+                                Duration = RecordingDuration,
+                                CategoryLabel = string.IsNullOrWhiteSpace(DraftCategoryLabel)
+                                        ? "Входящие"
+                                        : DraftCategoryLabel.Trim(),
+                                RecognitionStatus = VoiceNoteRecognitionStatus.Pending,
+                                Photos = DraftPhotoPaths.ToList(),
+                                AudioFilePath = $"voice-note-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.m4a",
+                                CreatedAt = DateTime.Now
+                        };
+
+                        await _voiceNoteService.SaveAsync(note);
+                        VoiceNotes.Insert(0, note);
+
+                        await AppShell.DisplayToastAsync("Голосовая заметка сохранена");
+                        PrepareDraft();
+                        await Shell.Current.Navigation.PopModalAsync();
+                }
+                catch (Exception ex)
+                {
+                        _errorHandler.HandleError(ex);
+                }
+        }
+
+        public void Dispose()
+        {
+                _recordingTimer.Stop();
+                _recordingTimer.Dispose();
+        }
+
+        private async Task LoadNotesAsync()
+        {
+                try
+                {
+                        IsBusy = true;
+                        var notes = await _voiceNoteService.GetNotesAsync();
+                        VoiceNotes = new ObservableCollection<VoiceNote>(notes);
+                }
+                finally
+                {
+                        IsBusy = false;
+                }
+        }
+
+        private void PrepareDraft()
+        {
+                DraftTitle = string.Empty;
+                DraftCategoryLabel = "Входящие";
+                RecordingDuration = TimeSpan.Zero;
+                DraftPhotoPaths.Clear();
+                _recordingStartedAt = null;
+                IsRecording = false;
+                _recordingTimer.Stop();
+        }
+
+        private void StartRecording()
+        {
+                RecordingDuration = TimeSpan.Zero;
+                _recordingStartedAt = DateTimeOffset.UtcNow;
+                _recordingTimer.Start();
+                IsRecording = true;
+        }
+
+        private void StopRecording()
+        {
+                _recordingTimer.Stop();
+                if (_recordingStartedAt is not null)
+                {
+                        RecordingDuration = DateTimeOffset.UtcNow - _recordingStartedAt.Value;
+                }
+
+                _recordingStartedAt = null;
+                IsRecording = false;
+        }
+
+        private void UpdateRecordingDuration()
+        {
+                if (_recordingStartedAt is null)
+                {
+                        return;
+                }
+
+                var duration = DateTimeOffset.UtcNow - _recordingStartedAt.Value;
+                MainThread.BeginInvokeOnMainThread(() => RecordingDuration = duration);
+        }
+
+        private static async Task<PermissionStatus> RequestPermissionAsync<TPermission>() where TPermission : Permissions.BasePermission, new()
+        {
+                        var status = await Permissions.CheckStatusAsync<TPermission>();
+                        if (status != PermissionStatus.Granted)
+                        {
+                                status = await Permissions.RequestAsync<TPermission>();
+                        }
+
+                        return status;
+        }
 }

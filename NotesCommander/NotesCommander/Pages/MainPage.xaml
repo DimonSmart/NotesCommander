@@ -1,15 +1,13 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:pageModels="clr-namespace:NotesCommander.PageModels"             
+             xmlns:pageModels="clr-namespace:NotesCommander.PageModels"
              xmlns:models="clr-namespace:NotesCommander.Models"
-             xmlns:controls="clr-namespace:NotesCommander.Pages.Controls"
-             xmlns:pullToRefresh="clr-namespace:Syncfusion.Maui.Toolkit.PullToRefresh;assembly=Syncfusion.Maui.Toolkit"
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="NotesCommander.Pages.MainPage"
              x:DataType="pageModels:MainPageModel"
              x:Name="OverviewPage"
-             Title="{Binding Today}">
+             Title="Голосовые заметки">
 
     <ContentPage.Behaviors>
         <toolkit:EventToCommandBehavior
@@ -22,7 +20,7 @@
                 Command="{Binding NavigatedFromCommand}" />
         <toolkit:EventToCommandBehavior
                 BindingContext="{Binding Path=BindingContext, Source={x:Reference OverviewPage}, x:DataType=ContentPage}"
-                EventName="Appearing"                
+                EventName="Appearing"
                 Command="{Binding AppearingCommand}" />
     </ContentPage.Behaviors>
 
@@ -32,71 +30,92 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid>
-        <pullToRefresh:SfPullToRefresh
-            IsRefreshing="{Binding IsRefreshing}"
-            RefreshCommand="{Binding RefreshCommand}">
-            <pullToRefresh:SfPullToRefresh.PullableContent>
-                <ScrollView>
-                    <Grid Padding="{StaticResource LayoutPadding}" RowSpacing="{StaticResource LayoutSpacing}">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+    <Grid RowDefinitions="*,Auto">
+        <RefreshView Grid.Row="0"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}">
+            <CollectionView ItemsSource="{Binding VoiceNotes}"
+                            Margin="0"
+                            SelectionMode="None"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}">
+                <CollectionView.Header>
+                    <VerticalStackLayout Padding="20,10"
+                                         Spacing="4">
+                        <Label Text="Локальные голосовые заметки"
+                               Style="{StaticResource Title2}" />
+                        <Label Text="Следите за длительностью, статусом распознавания и фото-превью в одном месте." />
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Padding="24"
+                                         Spacing="8"
+                                         HorizontalOptions="Center"
+                                         VerticalOptions="Center">
+                        <Label Text="Заметок пока нет"
+                               Style="{StaticResource Title3}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Нажмите «Добавить голосовую заметку», чтобы записать первую идею." />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:VoiceNote">
+                        <Border Style="{StaticResource CardStyle}"
+                                Margin="20,0,20,16">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  ColumnSpacing="16"
+                                  RowDefinitions="Auto,Auto,Auto">
+                                <Border WidthRequest="72"
+                                        HeightRequest="72"
+                                        BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="20" />
+                                    </Border.StrokeShape>
+                                    <Grid>
+                                        <Image Source="{Binding PhotoPreviewPath}"
+                                               Aspect="AspectFill"
+                                               HorizontalOptions="Fill"
+                                               VerticalOptions="Fill"
+                                               IsVisible="{Binding HasPhotoPreview}" />
+                                        <Label Text="{Binding PhotoPreviewFallbackGlyph}"
+                                               FontSize="32"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center"
+                                               IsVisible="{Binding HasPhotoPreview, Converter={StaticResource InvertedBoolConverter}}" />
+                                    </Grid>
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1"
+                                                     Spacing="6">
+                                    <Label Text="{Binding Title}"
+                                           Style="{StaticResource Title3}" />
+                                    <Label Text="{Binding DurationDisplay}"
+                                           TextColor="{StaticResource Gray400}" />
+                                    <Border Padding="8,2"
+                                            BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray800}}"
+                                            HorizontalOptions="Start">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="12" />
+                                        </Border.StrokeShape>
+                                        <Label Text="{Binding CategoryLabel}"
+                                               TextColor="{AppThemeBinding Light={StaticResource Gray700}, Dark={StaticResource Gray300}}"
+                                               FontSize="12"
+                                               TextTransform="Uppercase" />
+                                    </Border>
+                                    <Label Text="{Binding RecognitionStatusDisplay}"
+                                           TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                                           FontAttributes="Bold" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
 
-                        <Label Grid.Row="0" Text="Task Categories" Style="{StaticResource Title2}" SemanticProperties.HeadingLevel="Level1"/>
-                        <controls:CategoryChart Grid.Row="1" />
-                        <Label Grid.Row="2" Text="Projects" Style="{StaticResource Title2}" SemanticProperties.HeadingLevel="Level1"/>
-                        <CollectionView Grid.Row="3" ItemsSource="{Binding Projects}"
-                                        Margin="-7.5,0"
-                                        MinimumHeightRequest="250"
-                                        x:Name="ProjectsCollectionView"
-                                        SelectionMode="Single"
-                                        SelectedItem="{Binding SelectedProject}"
-                                        SelectionChangedCommand="{Binding NavigateToProjectCommand, Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, x:DataType=pageModels:MainPageModel}"
-                                        SelectionChangedCommandParameter="{Binding SelectedProject}">
-                            <CollectionView.ItemsLayout>
-                                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="7.5"/>
-                            </CollectionView.ItemsLayout>
-                            <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="models:Project">
-                                    <controls:ProjectCardView WidthRequest="200" />
-                                </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
-                        <Grid Grid.Row="4" MinimumHeightRequest="44">
-                            <Label Text="Tasks" Style="{StaticResource Title2}" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1"/>
-                            <ImageButton 
-                                Source="{StaticResource IconClean}"
-                                HorizontalOptions="End"
-                                VerticalOptions="Center"
-                                Aspect="Center"
-                                HeightRequest="44"
-                                WidthRequest="44"
-                                IsVisible="{Binding HasCompletedTasks}"
-                                Command="{Binding CleanTasksCommand}"
-                                SemanticProperties.Description="Clean tasks" />
-                        </Grid>
-                        <VerticalStackLayout Grid.Row="5" Spacing="15"
-                            BindableLayout.ItemsSource="{Binding Tasks}">
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate>
-                                    <controls:TaskView TaskCompletedCommand="{Binding TaskCompletedCommand, Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, x:DataType=pageModels:MainPageModel}" />
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </VerticalStackLayout>
-                    </Grid>
-                </ScrollView>
-            </pullToRefresh:SfPullToRefresh.PullableContent>
-        </pullToRefresh:SfPullToRefresh>
-
-        <controls:AddButton 
-            IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}"
-            Command="{Binding AddTaskCommand}"
-            SemanticProperties.Description="Add task" />
+        <Button Grid.Row="1"
+                Text="Добавить голосовую заметку"
+                Margin="20,0,20,24"
+                HeightRequest="48"
+                Command="{Binding AddVoiceNoteCommand}"
+                SemanticProperties.Description="Добавить голосовую заметку" />
     </Grid>
 </ContentPage>
