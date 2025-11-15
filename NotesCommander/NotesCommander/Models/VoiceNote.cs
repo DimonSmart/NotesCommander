@@ -5,10 +5,10 @@ namespace NotesCommander.Models;
 
 public enum VoiceNoteRecognitionStatus
 {
-        Pending,
-        Processing,
-        Completed,
-        Failed
+        InQueue = 0,
+        Recognizing = 1,
+        Ready = 2,
+        Error = 3
 }
 
 public enum VoiceNoteSyncStatus
@@ -38,7 +38,7 @@ public class VoiceNote
         public string CategoryLabel { get; set; } = "Входящие";
 
         public VoiceNoteRecognitionStatus RecognitionStatus { get; set; }
-                = VoiceNoteRecognitionStatus.Pending;
+                = VoiceNoteRecognitionStatus.InQueue;
 
         public VoiceNoteSyncStatus SyncStatus { get; set; }
                 = VoiceNoteSyncStatus.LocalOnly;
@@ -60,10 +60,10 @@ public class VoiceNote
 
         public string RecognitionStatusDisplay => RecognitionStatus switch
         {
-                VoiceNoteRecognitionStatus.Completed => "Расшифровка готова",
-                VoiceNoteRecognitionStatus.Processing => "Обработка",
-                VoiceNoteRecognitionStatus.Failed => "Ошибка распознавания",
-                _ => "Ожидает очереди"
+                VoiceNoteRecognitionStatus.Ready => "Готово",
+                VoiceNoteRecognitionStatus.Recognizing => "Распознаётся",
+                VoiceNoteRecognitionStatus.Error => "Ошибка",
+                _ => "В очереди"
         };
 
         public string? PhotoPreviewPath => Photos.FirstOrDefault()?.FilePath;
@@ -124,7 +124,7 @@ public class VoiceNoteSeed
         public string CategoryLabel { get; set; } = "Входящие";
 
         public VoiceNoteRecognitionStatus RecognitionStatus { get; set; }
-                = VoiceNoteRecognitionStatus.Pending;
+                = VoiceNoteRecognitionStatus.InQueue;
 
         public List<string> Photos { get; set; } = [];
 

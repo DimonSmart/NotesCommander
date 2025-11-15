@@ -20,4 +20,7 @@ public class VoiceNoteService : IVoiceNoteService
                 await _repository.SaveAsync(note, cancellationToken);
                 return note;
         }
+
+        public Task<VoiceNote?> GetAsync(int id, CancellationToken cancellationToken = default)
+                => _repository.GetAsync(id, cancellationToken);
 }

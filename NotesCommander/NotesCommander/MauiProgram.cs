@@ -51,10 +51,19 @@ public static class MauiProgram
                 builder.Services.AddSingleton<SeedDataService>();
                 builder.Services.AddSingleton<ModalErrorHandler>();
                 builder.Services.AddSingleton<IVoiceNoteService, VoiceNoteService>();
+                builder.Services.AddHttpClient(NoteSyncService.HttpClientName, client =>
+                {
+                        var backendUrl = Environment.GetEnvironmentVariable("NOTESCOMMANDER_BACKEND_URL") ?? "http://localhost:5192";
+                        client.BaseAddress = new Uri(backendUrl);
+                });
+                builder.Services.AddSingleton<NoteSyncService>();
                 builder.Services.AddSingleton<MainPageModel>();
                 builder.Services.AddSingleton<ManageMetaPageModel>();
                 builder.Services.AddTransient<NoteCapturePage>();
 
-                return builder.Build();
+                var app = builder.Build();
+                _ = app.Services.GetRequiredService<NoteSyncService>();
+
+                return app;
         }
 }
