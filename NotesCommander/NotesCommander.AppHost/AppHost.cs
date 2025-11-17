@@ -8,7 +8,7 @@ var whisper = builder.AddContainer("whisper", "fedirz/faster-whisper-server", "l
     .WithEnvironment("WHISPER__INFERENCE_DEVICE", "cpu");
 
 var backend = builder.AddProject<Projects.NotesCommander_Backend>("notes-backend")
-    .WithReference(whisper);
+    .WithEnvironment("Whisper__BaseUrl", whisper.GetEndpoint("http"));
 
 // MAUI project cannot be added to AppHost
 // builder.AddProject<Projects.NotesCommander>("notescommander")
