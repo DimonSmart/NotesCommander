@@ -6,6 +6,12 @@ namespace NotesCommander.Backend.Tests.Storage;
 
 public sealed class NoteStoreTests
 {
+    public NoteStoreTests()
+    {
+        // Initialize SQLite provider for tests
+        SQLitePCL.Batteries.Init();
+    }
+
     [Fact]
     public async Task UpdateStatusAsync_PreservesCategory_WhenCategoryIsMissing()
     {
@@ -31,9 +37,21 @@ public sealed class NoteStoreTests
         }
         finally
         {
+            // Give SQLite time to release the file handle
+            await Task.Delay(100);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
             if (File.Exists(databasePath))
             {
-                File.Delete(databasePath);
+                try
+                {
+                    File.Delete(databasePath);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
             }
         }
     }
