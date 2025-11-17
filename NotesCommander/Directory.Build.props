@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Where .NET will install the Android SDK -->
+    <AndroidSdkDirectory>/root/.dotnet/android-sdk</AndroidSdkDirectory>
+
+    <!-- Where .NET will install the Java SDK (JDK) -->
+    <JavaSdkDirectory>/root/.dotnet/jdk</JavaSdkDirectory>
+
+    <!-- Allow non-interactive installation of Android SDK components -->
+    <AcceptAndroidSdkLicenses>true</AcceptAndroidSdkLicenses>
+  </PropertyGroup>
+</Project>

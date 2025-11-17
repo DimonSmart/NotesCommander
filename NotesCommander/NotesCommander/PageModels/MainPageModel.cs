@@ -189,8 +189,13 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
                 try
                 {
-                        var photo = await MediaPicker.Default.PickPhotoAsync();
-                        if (photo is not null)
+                        var photos = await MediaPicker.Default.PickPhotosAsync();
+                        if (photos is null)
+                        {
+                                return;
+                        }
+
+                        foreach (var photo in photos)
                         {
                                 DraftPhotoPaths.Add(photo.FullPath);
                         }
