@@ -1,5 +1,84 @@
 # NotesCommander Backend Tests
 
+This project contains functional and integration tests for the NotesCommander backend API.
+
+## Test Categories
+
+### Functional Tests
+Tests that require external dependencies like Docker containers or the full application stack.
+
+#### WhisperIntegrationTests (Legacy)
+- **Purpose**: Direct integration tests with Whisper container
+- **Requirements**: Docker running locally
+- **Approach**: Spins up its own Whisper container using Testcontainers
+- **Run**: `dotnet test --filter Category=Functional`
+- **Note**: Tests the WhisperClient directly, bypassing the backend API
+
+#### BackendWhisperIntegrationTests (New)
+- **Purpose**: Integration tests through the backend API using Aspire
+- **Requirements**: Docker running locally
+- **Approach**: 
+  - Starts the entire application stack via Aspire (AppHost)
+  - Discovers backend service endpoint automatically
+  - Calls the backend `/api/whisper/transcribe` endpoint
+  - Tests the full integration path: Backend → WhisperClient → Whisper Container
+- **Run**: `dotnet test --filter "Category=Functional&FullyQualifiedName~BackendWhisper"`
+- **Benefits**:
+  - Tests the actual production code path
+  - Validates service discovery and configuration
+  - Ensures backend API contract is working correctly
+
+## Running Tests
+
+### Prerequisites
+- Docker Desktop installed and running
+- .NET 10 SDK installed
+
+### Run All Tests
+```bash
+dotnet test
+```
+
+### Run Only Functional Tests
+```bash
+dotnet test --filter Category=Functional
+```
+
+### Run Specific Test Class
+```bash
+# Legacy direct Whisper tests
+dotnet test --filter "FullyQualifiedName~WhisperIntegrationTests"
+
+# New backend API tests via Aspire
+dotnet test --filter "FullyQualifiedName~BackendWhisperIntegrationTests"
+```
+
+## Test Data
+- Test audio file: `TestData/samples_jfk.wav` (JFK's inauguration speech excerpt)
+- Expected transcription fragment: "ask not what your country can do for you"
+
+## Architecture
+
+### BackendWhisperIntegrationTests Flow
+```
+Test → Aspire (AppHost) → Backend API (/api/whisper/transcribe) → WhisperClient → Whisper Container
+```
+
+The test:
+1. Creates and starts the Aspire application using `DistributedApplicationTestingBuilder`
+2. Gets an HttpClient configured for the `notes-backend` resource
+3. Waits for the backend health endpoint to respond
+4. Sends a multipart/form-data POST request with audio file to `/api/whisper/transcribe`
+5. Validates the transcription response
+
+This approach ensures we're testing the actual production code path, including:
+- Service configuration and dependency injection
+- HTTP endpoint routing and model binding
+- File upload handling via MediaStorage
+- WhisperClient integration with the Whisper container
+- Error handling and response formatting
+
+
 Этот проект содержит тесты для бэкенда NotesCommander.
 
 ## Типы тестов

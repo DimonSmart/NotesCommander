@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" Version="13.0.0-preview.1.25560.3" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
@@ -24,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NotesCommander.Backend\NotesCommander.Backend.csproj" />
+    <ProjectReference Include="..\NotesCommander.AppHost\NotesCommander.AppHost.csproj" />
   </ItemGroup>
 
   <ItemGroup>
