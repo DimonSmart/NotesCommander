@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pageModels="clr-namespace:NotesCommander.PageModels"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="NotesCommander.Pages.SettingsPage"
+             x:DataType="pageModels:SettingsPageModel"
+             x:Name="Page"
+             Title="Настройки">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="24">
+            
+            <!-- Статус разрешений -->
+            <Border Style="{StaticResource CardStyle}"
+                    Padding="20">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Статус разрешений"
+                           Style="{StaticResource Title3}" />
+                    <Label Text="{Binding PermissionsStatusText}"
+                           TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                           FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Разрешения -->
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Разрешения"
+                       Style="{StaticResource Title2}" />
+
+                <!-- Микрофон -->
+                <Border Style="{StaticResource CardStyle}"
+                        Padding="20">
+                    <Grid RowDefinitions="Auto,Auto,Auto"
+                          RowSpacing="12">
+                        <HorizontalStackLayout Grid.Row="0"
+                                               Spacing="12">
+                            <Label Text="🎤"
+                                   FontSize="24"
+                                   VerticalOptions="Center" />
+                            <VerticalStackLayout Spacing="4"
+                                                 VerticalOptions="Center">
+                                <Label Text="Доступ к микрофону"
+                                       FontAttributes="Bold"
+                                       FontSize="16" />
+                                <Label Text="Для записи голосовых заметок"
+                                       TextColor="{StaticResource Gray400}"
+                                       FontSize="12" />
+                            </VerticalStackLayout>
+                        </HorizontalStackLayout>
+
+                        <Label Grid.Row="1"
+                               Text="{Binding MicrophonePermissionStatus}"
+                               TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                               FontSize="14" />
+
+                        <Button Grid.Row="2"
+                                Text="Запросить разрешение"
+                                Command="{Binding RequestMicrophonePermissionCommand}"
+                                HeightRequest="44"
+                                IsEnabled="{Binding HasMicrophonePermission, Converter={StaticResource InvertedBoolConverter}}" />
+                    </Grid>
+                </Border>
+
+                <!-- Медиа (Фото/Камера) -->
+                <Border Style="{StaticResource CardStyle}"
+                        Padding="20">
+                    <Grid RowDefinitions="Auto,Auto,Auto"
+                          RowSpacing="12">
+                        <HorizontalStackLayout Grid.Row="0"
+                                               Spacing="12">
+                            <Label Text="📷"
+                                   FontSize="24"
+                                   VerticalOptions="Center" />
+                            <VerticalStackLayout Spacing="4"
+                                                 VerticalOptions="Center">
+                                <Label Text="Доступ к фото и камере"
+                                       FontAttributes="Bold"
+                                       FontSize="16" />
+                                <Label Text="Для прикрепления фотографий к заметкам"
+                                       TextColor="{StaticResource Gray400}"
+                                       FontSize="12" />
+                            </VerticalStackLayout>
+                        </HorizontalStackLayout>
+
+                        <Label Grid.Row="1"
+                               Text="{Binding MediaPermissionStatus}"
+                               TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                               FontSize="14" />
+
+                        <Button Grid.Row="2"
+                                Text="Запросить разрешение"
+                                Command="{Binding RequestMediaPermissionCommand}"
+                                HeightRequest="44"
+                                IsEnabled="{Binding HasMediaPermission, Converter={StaticResource InvertedBoolConverter}}" />
+                    </Grid>
+                </Border>
+
+                <!-- Запросить все разрешения -->
+                <Button Text="Запросить все разрешения"
+                        Command="{Binding RequestAllPermissionsCommand}"
+                        HeightRequest="48"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                        TextColor="White" />
+            </VerticalStackLayout>
+
+            <!-- Информация о приложении -->
+            <Border Style="{StaticResource CardStyle}"
+                    Padding="20">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="О приложении"
+                           Style="{StaticResource Title3}" />
+                    <Grid ColumnDefinitions="Auto,*"
+                          ColumnSpacing="12"
+                          RowDefinitions="Auto,Auto"
+                          RowSpacing="8">
+                        <Label Grid.Row="0"
+                               Grid.Column="0"
+                               Text="Версия:"
+                               TextColor="{StaticResource Gray400}" />
+                        <Label Grid.Row="0"
+                               Grid.Column="1"
+                               Text="1.0.0" />
+                        
+                        <Label Grid.Row="1"
+                               Grid.Column="0"
+                               Text="Платформа:"
+                               TextColor="{StaticResource Gray400}" />
+                        <Label Grid.Row="1"
+                               Grid.Column="1"
+                               Text="{Binding Source={x:Static DeviceInfo.Platform}}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

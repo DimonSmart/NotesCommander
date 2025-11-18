@@ -34,18 +34,11 @@
         <RefreshView Grid.Row="0"
                      IsRefreshing="{Binding IsRefreshing}"
                      Command="{Binding RefreshCommand}">
-            <CollectionView ItemsSource="{Binding VoiceNotes}"
+            <CollectionView ItemsSource="{Binding GroupedVoiceNotes}"
                             Margin="0"
                             SelectionMode="None"
+                            IsGrouped="True"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}">
-                <CollectionView.Header>
-                    <VerticalStackLayout Padding="20,10"
-                                         Spacing="4">
-                        <Label Text="Локальные голосовые заметки"
-                               Style="{StaticResource Title2}" />
-                        <Label Text="Следите за длительностью, статусом распознавания и фото-превью в одном месте." />
-                    </VerticalStackLayout>
-                </CollectionView.Header>
                 <CollectionView.EmptyView>
                     <VerticalStackLayout Padding="24"
                                          Spacing="8"
@@ -57,18 +50,28 @@
                         <Label Text="Нажмите «Добавить голосовую заметку», чтобы записать первую идею." />
                     </VerticalStackLayout>
                 </CollectionView.EmptyView>
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate x:DataType="models:VoiceNoteGroup">
+                        <Label Text="{Binding DateGroupDisplay}"
+                               Padding="20,16,20,8"
+                               Style="{StaticResource Title3}"
+                               TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}" />
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VoiceNote">
                         <Border Style="{StaticResource CardStyle}"
-                                Margin="20,0,20,16">
-                            <Grid ColumnDefinitions="Auto,*"
-                                  ColumnSpacing="16"
-                                  RowDefinitions="Auto,Auto,Auto">
-                                <Border WidthRequest="72"
-                                        HeightRequest="72"
+                                Margin="20,0,20,12">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                                  ColumnSpacing="12"
+                                  RowDefinitions="Auto">
+                                <!-- Мини-превью фото -->
+                                <Border Grid.Column="0"
+                                        WidthRequest="60"
+                                        HeightRequest="60"
                                         BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}">
                                     <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="20" />
+                                        <RoundRectangle CornerRadius="12" />
                                     </Border.StrokeShape>
                                     <Grid>
                                         <Image Source="{Binding PhotoPreviewPath}"
@@ -77,33 +80,57 @@
                                                VerticalOptions="Fill"
                                                IsVisible="{Binding HasPhotoPreview}" />
                                         <Label Text="{Binding PhotoPreviewFallbackGlyph}"
-                                               FontSize="32"
+                                               FontSize="24"
                                                HorizontalOptions="Center"
                                                VerticalOptions="Center"
                                                IsVisible="{Binding HasPhotoPreview, Converter={StaticResource InvertedBoolConverter}}" />
                                     </Grid>
                                 </Border>
+                                
+                                <!-- Информация о заметке -->
                                 <VerticalStackLayout Grid.Column="1"
-                                                     Spacing="6">
+                                                     Spacing="4"
+                                                     VerticalOptions="Center">
                                     <Label Text="{Binding Title}"
-                                           Style="{StaticResource Title3}" />
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           LineBreakMode="TailTruncation"
+                                           MaxLines="1" />
                                     <Label Text="{Binding DurationDisplay}"
-                                           TextColor="{StaticResource Gray400}" />
-                                    <Border Padding="8,2"
-                                            BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray800}}"
-                                            HorizontalOptions="Start">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="12" />
-                                        </Border.StrokeShape>
-                                        <Label Text="{Binding CategoryLabel}"
-                                               TextColor="{AppThemeBinding Light={StaticResource Gray700}, Dark={StaticResource Gray300}}"
-                                               FontSize="12"
-                                               TextTransform="Uppercase" />
-                                    </Border>
+                                           TextColor="{StaticResource Gray400}"
+                                           FontSize="12" />
                                     <Label Text="{Binding RecognitionStatusDisplay}"
                                            TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
-                                           FontAttributes="Bold" />
+                                           FontSize="11" />
                                 </VerticalStackLayout>
+                                
+                                <!-- Кнопка воспроизведения аудио -->
+                                <Button Grid.Column="2"
+                                        Text="▶"
+                                        WidthRequest="44"
+                                        HeightRequest="44"
+                                        CornerRadius="22"
+                                        FontSize="16"
+                                        Padding="0"
+                                        BackgroundColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
+                                        TextColor="White"
+                                        VerticalOptions="Center"
+                                        SemanticProperties.Hint="Воспроизвести аудио" />
+                                
+                                <!-- Кнопка открытия детальной карточки -->
+                                <Button Grid.Column="3"
+                                        Text="→"
+                                        WidthRequest="44"
+                                        HeightRequest="44"
+                                        CornerRadius="22"
+                                        FontSize="20"
+                                        Padding="0"
+                                        BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray700}}"
+                                        TextColor="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource Gray100}}"
+                                        VerticalOptions="Center"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, Path=OpenNoteDetailCommand}"
+                                        CommandParameter="{Binding .}"
+                                        SemanticProperties.Hint="Открыть детали заметки" />
                             </Grid>
                         </Border>
                     </DataTemplate>

@@ -20,6 +20,12 @@
         ContentTemplate="{DataTemplate pages:ManageMetaPage}"
         Route="manage" />
 
+    <ShellContent
+        Title="Settings"
+        Icon="{StaticResource IconMeta}"
+        ContentTemplate="{DataTemplate pages:SettingsPage}"
+        Route="settings" />
+
     <Shell.FlyoutFooter>
         <Grid Padding="15">
             <sf:SfSegmentedControl x:Name="ThemeSegmentedControl" 

@@ -28,21 +28,13 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private DateTimeOffset? _recordingStartedAt;
 
         [ObservableProperty]
-        private ObservableCollection<VoiceNote> voiceNotes = new();
+        private ObservableCollection<VoiceNoteGroup> groupedVoiceNotes = new();
 
         [ObservableProperty]
         private bool isBusy;
 
         [ObservableProperty]
         private bool isRefreshing;
-
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(PermissionsStatusText))]
-        private bool hasMicrophonePermission;
-
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(PermissionsStatusText))]
-        private bool hasMediaPermission;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RecordingStatusText))]
@@ -60,10 +52,6 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private string draftCategoryLabel = "Входящие";
 
         public ObservableCollection<string> DraftPhotoPaths { get; } = new();
-
-        public string PermissionsStatusText => HasMicrophonePermission && HasMediaPermission
-                ? "Разрешения получены"
-                : "Нужно разрешить доступ к микрофону и медиа";
 
         public string RecordingStatusText => IsRecording ? "Идёт запись" : "Ожидание записи";
 
@@ -127,40 +115,14 @@ public partial class MainPageModel : ObservableObject, IDisposable
         }
 
         [RelayCommand]
-        private async Task AddVoiceNote()
-        {
-                PrepareDraft();
-                var capturePage = _serviceProvider.GetRequiredService<NoteCapturePage>();
-                await Shell.Current.Navigation.PushModalAsync(capturePage);
-        }
-
-        [RelayCommand]
-        private async Task RequestPermissions()
+        private async Task OpenNoteDetail(VoiceNote note)
         {
                 try
                 {
-                        // На Windows (unpackaged) разрешения запрашиваются системой автоматически при использовании
-                        if (DeviceInfo.Current.Platform == DevicePlatform.WinUI)
-                        {
-                                HasMicrophonePermission = true;
-                                HasMediaPermission = true;
-                                return;
-                        }
-
-                        var microphone = await RequestPermissionAsync<Permissions.Microphone>();
-                        HasMicrophonePermission = microphone == PermissionStatus.Granted;
-
-                        PermissionStatus mediaStatus;
-                        if (DeviceInfo.Current.Platform == DevicePlatform.Android)
-                        {
-                                mediaStatus = await RequestPermissionAsync<Permissions.StorageWrite>();
-                        }
-                        else
-                        {
-                                mediaStatus = await RequestPermissionAsync<Permissions.Photos>();
-                        }
-
-                        HasMediaPermission = mediaStatus == PermissionStatus.Granted;
+                        var detailPage = _serviceProvider.GetRequiredService<NoteDetailPage>();
+                        var pageModel = _serviceProvider.GetRequiredService<NoteDetailPageModel>();
+                        pageModel.LoadNote(note);
+                        await Shell.Current.Navigation.PushModalAsync(detailPage);
                 }
                 catch (Exception ex)
                 {
@@ -169,14 +131,16 @@ public partial class MainPageModel : ObservableObject, IDisposable
         }
 
         [RelayCommand]
+        private async Task AddVoiceNote()
+        {
+                PrepareDraft();
+                var capturePage = _serviceProvider.GetRequiredService<NoteCapturePage>();
+                await Shell.Current.Navigation.PushModalAsync(capturePage);
+        }
+
+        [RelayCommand]
         private async Task ToggleRecording()
         {
-                if (!HasMicrophonePermission)
-                {
-                        await AppShell.DisplaySnackbarAsync("Сначала предоставьте доступ к микрофону");
-                        return;
-                }
-
                 if (IsRecording)
                 {
                         StopRecording();
@@ -189,12 +153,6 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task PickPhoto()
         {
-                if (!HasMediaPermission)
-                {
-                        await AppShell.DisplaySnackbarAsync("Нужно разрешение на фото или память");
-                        return;
-                }
-
                 try
                 {
                         var photos = await MediaPicker.Default.PickPhotosAsync();
@@ -221,12 +179,6 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task CapturePhoto()
         {
-                if (!HasMediaPermission)
-                {
-                        await AppShell.DisplaySnackbarAsync("Нужно разрешение на фото или память");
-                        return;
-                }
-
                 try
                 {
                         if (!MediaPicker.Default.IsCaptureSupported)
@@ -286,7 +238,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         };
 
                         var saved = await _voiceNoteService.SaveAsync(note);
-                        VoiceNotes.Insert(0, saved);
+                        await LoadNotesAsync();
                         _noteSyncService.TrackForUpload(saved);
 
                         await AppShell.DisplayToastAsync("Голосовая заметка сохранена");
@@ -311,12 +263,40 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         IsBusy = true;
                         var notes = await _voiceNoteService.GetNotesAsync();
-                        VoiceNotes = new ObservableCollection<VoiceNote>(notes);
+                        
+                        // Фильтрация по последнему месяцу
+                        var oneMonthAgo = DateTime.UtcNow.AddMonths(-1);
+                        var filteredNotes = notes.Where(n => n.CreatedAt >= oneMonthAgo).ToList();
+                        
+                        // Группировка по датам
+                        var grouped = filteredNotes
+                                .GroupBy(n => n.CreatedAt.Date)
+                                .OrderByDescending(g => g.Key)
+                                .Select(g => new VoiceNoteGroup(
+                                        g.Key.ToString("yyyy-MM-dd"),
+                                        FormatDateGroupHeader(g.Key),
+                                        g.OrderByDescending(n => n.CreatedAt)))
+                                .ToList();
+                        
+                        GroupedVoiceNotes = new ObservableCollection<VoiceNoteGroup>(grouped);
                 }
                 finally
                 {
                         IsBusy = false;
                 }
+        }
+        
+        private static string FormatDateGroupHeader(DateTime date)
+        {
+                var today = DateTime.UtcNow.Date;
+                var yesterday = today.AddDays(-1);
+                
+                if (date == today)
+                        return "Сегодня";
+                if (date == yesterday)
+                        return "Вчера";
+                
+                return date.ToString("d MMMM yyyy", new System.Globalization.CultureInfo("ru-RU"));
         }
 
         private void PrepareDraft()
@@ -367,14 +347,4 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 return Path.Combine(FileSystem.AppDataDirectory, fileName);
         }
 
-        private static async Task<PermissionStatus> RequestPermissionAsync<TPermission>() where TPermission : Permissions.BasePermission, new()
-        {
-                        var status = await Permissions.CheckStatusAsync<TPermission>();
-                        if (status != PermissionStatus.Granted)
-                        {
-                                status = await Permissions.RequestAsync<TPermission>();
-                        }
-
-                        return status;
-        }
 }

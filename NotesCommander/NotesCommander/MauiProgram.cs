@@ -59,7 +59,10 @@ public static class MauiProgram
                 builder.Services.AddSingleton<NoteSyncService>();
                 builder.Services.AddSingleton<MainPageModel>();
                 builder.Services.AddSingleton<ManageMetaPageModel>();
+                builder.Services.AddSingleton<SettingsPageModel>();
+                builder.Services.AddTransient<NoteDetailPageModel>();
                 builder.Services.AddTransient<NoteCapturePage>();
+                builder.Services.AddTransient<NoteDetailPage>();
 
                 var app = builder.Build();
                 _ = app.Services.GetRequiredService<NoteSyncService>();
