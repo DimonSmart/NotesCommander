@@ -139,6 +139,14 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 try
                 {
+                        // На Windows (unpackaged) разрешения запрашиваются системой автоматически при использовании
+                        if (DeviceInfo.Current.Platform == DevicePlatform.WinUI)
+                        {
+                                HasMicrophonePermission = true;
+                                HasMediaPermission = true;
+                                return;
+                        }
+
                         var microphone = await RequestPermissionAsync<Permissions.Microphone>();
                         HasMicrophonePermission = microphone == PermissionStatus.Granted;
 
