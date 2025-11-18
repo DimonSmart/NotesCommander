@@ -1,0 +1,150 @@
+# NotesCommander Architecture
+direction: right
+
+# Presentation Layer
+PresentationLayer: {
+  label: "Presentation Layer"
+  style: {
+    stroke-dash: 4
+    fill: "#E3F2FD"
+  }
+
+  User: {
+    label: "User"
+    shape: person
+    style: {
+      fill: "#90CAF9"
+    }
+  }
+
+  MauiApp: {
+    label: ".NET MAUI Application\nCross-platform UI"
+    style: {
+      fill: "#64B5F6"
+    }
+
+    PageModels: {
+      label: "PageModels\n(MainPageModel, etc.)"
+    }
+
+    Services: {
+      label: "Local Services\n(VoiceNoteService,\nNoteSyncService)"
+    }
+
+    Repository: {
+      label: "Local Repository\n(SQLite)"
+    }
+  }
+}
+
+# Orchestration Layer
+OrchestrationLayer: {
+  label: "Orchestration Layer (.NET Aspire)"
+  style: {
+    stroke-dash: 4
+    fill: "#F3E5F5"
+  }
+
+  AppHost: {
+    label: "NotesCommander.AppHost\nService Discovery\n& Configuration"
+    style: {
+      fill: "#BA68C8"
+    }
+  }
+}
+
+# Backend Layer
+BackendLayer: {
+  label: "Backend Layer"
+  style: {
+    stroke-dash: 4
+    fill: "#E8F5E9"
+  }
+
+  BackendAPI: {
+    label: "NotesCommander.Backend\nASP.NET Core Web API"
+    style: {
+      fill: "#66BB6A"
+    }
+
+    NotesApi: {
+      label: "Notes API\n(Upload, Get, Recognize)"
+    }
+
+    RecognitionService: {
+      label: "RecognitionHostedService\n(Background Worker)"
+    }
+
+    BackendServices: {
+      label: "Services\n(WhisperClient, NoteStore,\nMediaStorage)"
+    }
+  }
+}
+
+# Infrastructure Layer
+InfrastructureLayer: {
+  label: "Infrastructure Layer"
+  style: {
+    stroke-dash: 4
+    fill: "#FFF3E0"
+  }
+
+  WhisperContainer: {
+    label: "Whisper STT Container\nfedirz/faster-whisper-server\nDocker"
+    style: {
+      fill: "#FFB74D"
+    }
+  }
+
+  Storage: {
+    label: "File Storage\n(Audio & Photos)"
+    shape: cylinder
+    style: {
+      fill: "#FF9800"
+    }
+  }
+
+  LocalDB: {
+    label: "SQLite Database\n(Local Device)"
+    shape: cylinder
+    style: {
+      fill: "#64B5F6"
+    }
+  }
+
+  BackendDB: {
+    label: "Backend Storage\n(Notes & Media)"
+    shape: cylinder
+    style: {
+      fill: "#66BB6A"
+    }
+  }
+}
+
+# Connections
+User -> MauiApp.PageModels: "Interacts with UI"
+MauiApp.PageModels -> MauiApp.Services: "Uses"
+MauiApp.Services -> MauiApp.Repository: "CRUD Operations"
+MauiApp.Repository -> LocalDB: "Read/Write"
+MauiApp.Services -> BackendAPI.NotesApi: "HTTP/HTTPS\n(Sync Notes)"
+
+AppHost -> BackendAPI: "Orchestrates &\nManages"
+AppHost -> WhisperContainer: "Manages Container\nLifecycle"
+
+BackendAPI.NotesApi -> BackendAPI.BackendServices: "Uses"
+BackendAPI.RecognitionService -> BackendAPI.BackendServices: "Uses"
+BackendAPI.BackendServices -> BackendDB: "Read/Write"
+BackendAPI.BackendServices -> Storage: "Store Media"
+BackendAPI.BackendServices -> WhisperContainer: "HTTP API\n(Transcribe Audio)"
+
+# Key Components Notes
+notes: |md
+  ## Key Architectural Decisions:
+
+  1. **Client-Server Architecture**: MAUI app works offline with local SQLite, syncs when online
+  2. **.NET Aspire Orchestration**: Manages backend and Whisper container with service discovery
+  3. **Background Processing**: RecognitionHostedService polls for queued notes and processes them
+  4. **Speech Recognition**: Faster-Whisper container provides OpenAI-compatible API
+  5. **Data Sync**: NoteSyncService handles upload queue and status polling
+  6. **Local-First**: All data stored locally first, then synced to backend
+|

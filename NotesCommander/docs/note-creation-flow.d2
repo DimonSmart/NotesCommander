@@ -1,0 +1,227 @@
+# Voice Note Creation Flow
+direction: down
+
+title: Voice Note Creation and Recognition Flow {
+  near: top-center
+  shape: text
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+# Actors and Systems
+User: {
+  shape: person
+  style.fill: "#90CAF9"
+}
+
+UI: {
+  label: "MAUI UI\n(NoteCapturePage)"
+  style.fill: "#64B5F6"
+}
+
+MainPageModel: {
+  label: "MainPageModel\n(ViewModel)"
+  style.fill: "#42A5F5"
+}
+
+VoiceNoteService: {
+  label: "VoiceNoteService\n(Local Service)"
+  style.fill: "#1E88E5"
+}
+
+VoiceNoteRepository: {
+  label: "VoiceNoteRepository\n(Data Access)"
+  style.fill: "#1976D2"
+}
+
+LocalDB: {
+  label: "SQLite Database\n(Local)"
+  shape: cylinder
+  style.fill: "#1565C0"
+}
+
+NoteSyncService: {
+  label: "NoteSyncService\n(Background Sync)"
+  style.fill: "#66BB6A"
+}
+
+BackendAPI: {
+  label: "Backend API\n(Notes Endpoint)"
+  style.fill: "#43A047"
+}
+
+NoteStore: {
+  label: "NoteStore\n(Backend Storage)"
+  style.fill: "#2E7D32"
+}
+
+BackendDB: {
+  label: "Backend Storage\n(Files & Metadata)"
+  shape: cylinder
+  style.fill: "#1B5E20"
+}
+
+RecognitionService: {
+  label: "RecognitionHostedService\n(Background Worker)"
+  style.fill: "#FFB74D"
+}
+
+WhisperClient: {
+  label: "WhisperClient\n(STT Client)"
+  style.fill: "#FF9800"
+}
+
+WhisperContainer: {
+  label: "Whisper Container\n(Speech-to-Text)"
+  style.fill: "#F57C00"
+}
+
+# Sequence Flow
+
+# 1. User starts recording
+User -> UI: 1. Tap "Start Recording"
+UI -> MainPageModel: 2. ToggleRecording()
+MainPageModel -> MainPageModel: 3. StartRecording() - Set time & start timer
+
+# 2. User stops recording and saves
+User -> UI: 4. Tap "Stop Recording"
+UI -> MainPageModel: 5. ToggleRecording()
+MainPageModel -> MainPageModel: 6. StopRecording() - Calculate duration & stop timer
+
+User -> UI: 7. Enter title, category, add photos
+User -> UI: 8. Tap "Save"
+UI -> MainPageModel: 9. SaveMetadata()
+
+# 3. Local save
+MainPageModel -> VoiceNoteService: 10. SaveAsync(note)
+VoiceNoteService -> VoiceNoteRepository: 11. SaveAsync(note)
+VoiceNoteRepository -> LocalDB: 12. INSERT/UPDATE VoiceNote + Photos + Tags
+LocalDB -> VoiceNoteRepository: 13. Saved ID
+VoiceNoteRepository -> VoiceNoteService: 14. Return note
+VoiceNoteService -> MainPageModel: 15. Return saved note
+
+# 4. Track for sync
+MainPageModel -> NoteSyncService: 16. TrackForUpload(note) - Add to sync queue
+MainPageModel -> UI: 17. Show "Note Saved"
+UI -> User: 18. Display toast & close modal
+
+# 5. Background sync (async)
+NoteSyncService -> NoteSyncService: 19. ProcessQueueAsync() - Background worker, check connectivity
+
+NoteSyncService -> VoiceNoteService: 20. GetAsync(localId)
+VoiceNoteService -> VoiceNoteRepository: 21. GetAsync(localId)
+VoiceNoteRepository -> LocalDB: 22. SELECT note
+LocalDB -> VoiceNoteRepository: 23. Return note data
+VoiceNoteRepository -> VoiceNoteService: 24. Return note
+VoiceNoteService -> NoteSyncService: 25. Return note with audio & photos
+
+# 6. Upload to backend
+NoteSyncService -> BackendAPI: 26. POST /notes (multipart: audio, photos, metadata)
+BackendAPI -> NoteStore: 27. CreateAsync(note)
+NoteStore -> BackendDB: 28. Save note metadata & media files
+BackendDB -> NoteStore: 29. Return saved note with server ID
+NoteStore -> BackendAPI: 30. Return note
+BackendAPI -> NoteSyncService: 31. HTTP 201 Created (Server ID, Status: Uploaded)
+
+# 7. Update local note with server ID
+NoteSyncService -> VoiceNoteService: 32. SaveAsync(note) - Update with server ID, Status: Synced
+VoiceNoteService -> VoiceNoteRepository: 33. SaveAsync(note)
+VoiceNoteRepository -> LocalDB: 34. UPDATE ServerId, SyncStatus
+LocalDB -> VoiceNoteRepository: 35. Saved
+VoiceNoteRepository -> VoiceNoteService: 36. Return
+VoiceNoteService -> NoteSyncService: 37. Return
+
+# 8. Request recognition
+NoteSyncService -> BackendAPI: 38. POST /notes/\{id\}/recognize
+BackendAPI -> NoteStore: 39. UpdateStatusAsync() - Status Queued
+NoteStore -> BackendDB: 40. UPDATE status
+BackendDB -> NoteStore: 41. Updated
+NoteStore -> BackendAPI: 42. Return
+BackendAPI -> NoteSyncService: 43. HTTP 200 OK
+
+# 9. Background recognition (async)
+RecognitionService -> RecognitionService: 44. ExecuteAsync() - Poll every 3 seconds
+RecognitionService -> NoteStore: 45. ListByStatusAsync (Queued)
+NoteStore -> BackendDB: 46. SELECT queued notes
+BackendDB -> NoteStore: 47. Return queued notes
+NoteStore -> RecognitionService: 48. Return notes list
+
+# 10. Process recognition
+RecognitionService -> NoteStore: 49. UpdateStatusAsync() - Status Recognizing
+NoteStore -> BackendDB: 50. UPDATE status
+BackendDB -> NoteStore: 51. Updated
+NoteStore -> RecognitionService: 52. Return
+
+RecognitionService -> WhisperClient: 53. TranscribeAsync(audioFilePath)
+WhisperClient -> WhisperContainer: 54. POST /v1/audio/transcriptions (file, model: base, lang: ru)
+WhisperContainer -> WhisperContainer: 55. Process audio with Faster-Whisper
+WhisperContainer -> WhisperClient: 56. Return transcription (Text, Segments, Metadata)
+WhisperClient -> RecognitionService: 57. Return transcription
+
+# 11. Update with transcription
+RecognitionService -> NoteStore: 58. UpdateStatusAsync() - Status: Completed, RecognizedText
+NoteStore -> BackendDB: 59. UPDATE status & recognized text
+BackendDB -> NoteStore: 60. Updated
+NoteStore -> RecognitionService: 61. Return
+
+# 12. Client polls for updates
+NoteSyncService -> NoteSyncService: 62. PollRecognitionAsync() - Poll every 5 seconds
+NoteSyncService -> BackendAPI: 63. GET /notes/\{id\}
+BackendAPI -> NoteStore: 64. GetAsync(id)
+NoteStore -> BackendDB: 65. SELECT note
+BackendDB -> NoteStore: 66. Return note data
+NoteStore -> BackendAPI: 67. Return note
+BackendAPI -> NoteSyncService: 68. HTTP 200 OK (Status: Completed, RecognizedText)
+
+# 13. Update local note with recognition
+NoteSyncService -> VoiceNoteService: 69. SaveAsync(note) - Update with recognized text
+VoiceNoteService -> VoiceNoteRepository: 70. SaveAsync(note)
+VoiceNoteRepository -> LocalDB: 71. UPDATE RecognizedText, RecognitionStatus
+LocalDB -> VoiceNoteRepository: 72. Saved
+VoiceNoteRepository -> VoiceNoteService: 73. Return
+VoiceNoteService -> NoteSyncService: 74. Return
+
+# 14. UI reflects changes
+UI -> MainPageModel: 75. Refresh (if visible)
+MainPageModel -> VoiceNoteService: 76. GetNotesAsync()
+VoiceNoteService -> VoiceNoteRepository: 77. ListAsync()
+VoiceNoteRepository -> LocalDB: 78. SELECT all notes
+LocalDB -> VoiceNoteRepository: 79. Return notes
+VoiceNoteRepository -> VoiceNoteService: 80. Return notes
+VoiceNoteService -> MainPageModel: 81. Return notes
+MainPageModel -> UI: 82. Update collection
+UI -> User: 83. Display note with recognized text
+
+# Notes
+notes: |md
+  ## Flow Overview:
+
+  **Phase 1 (Steps 1-18)**: User interaction and local save
+  - Recording audio, entering metadata, saving to local SQLite
+
+  **Phase 2 (Steps 19-31)**: Background sync to backend
+  - NoteSyncService uploads note to backend when online
+  - Backend stores metadata and media files
+
+  **Phase 3 (Steps 32-43)**: Server ID update and recognition request
+  - Local note updated with server ID
+  - Recognition request sent to backend
+
+  **Phase 4 (Steps 44-61)**: Background speech recognition
+  - RecognitionHostedService polls for queued notes
+  - Whisper container transcribes audio
+  - Backend updated with transcribed text
+
+  **Phase 5 (Steps 62-83)**: Client polls and updates
+  - NoteSyncService polls for recognition status
+  - Local database updated with recognized text
+  - UI refreshes to show transcription
+
+  ## Key Points:
+  - **Local-First**: All data saved locally immediately
+  - **Async Background**: Sync and recognition happen in background
+  - **Resilient**: Works offline, syncs when online
+  - **Polling**: Client polls for recognition updates every 5 seconds
+|
