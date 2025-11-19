@@ -21,11 +21,35 @@ public class AudioPlaybackService : IAudioPlaybackService
 
         public async Task PlayAsync(string filePath)
         {
-                Stop();
+                try
+                {
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Starting playback: {filePath}");
+                        
+                        if (!File.Exists(filePath))
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] ERROR: File not found: {filePath}");
+                                throw new FileNotFoundException($"Audio file not found: {filePath}");
+                        }
+                        
+                        Stop();
 
-                _currentStream = File.OpenRead(filePath);
-                _currentPlayer = _audioManager.CreatePlayer(_currentStream);
-                await Task.Run(() => _currentPlayer.Play());
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Opening file stream...");
+                        _currentStream = File.OpenRead(filePath);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Creating player...");
+                        _currentPlayer = _audioManager.CreatePlayer(_currentStream);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Starting playback...");
+                        _currentPlayer.Play();
+                        
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Playback started successfully. Duration: {_currentPlayer.Duration}");
+                }
+                catch (Exception ex)
+                {
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] ERROR: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Stack trace: {ex.StackTrace}");
+                        throw;
+                }
         }
 
         public void Stop()

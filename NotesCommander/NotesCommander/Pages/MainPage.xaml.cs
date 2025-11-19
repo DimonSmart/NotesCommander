@@ -1,5 +1,4 @@
 ﻿using NotesCommander.PageModels;
-using NotesCommander.Services;
 
 namespace NotesCommander.Pages;
 
@@ -7,10 +6,10 @@ public partial class MainPage : ContentPage
 {
 	private readonly MainPageModel _model;
 
-	public MainPage()
+	public MainPage(MainPageModel model)
 	{
 		InitializeComponent();
-		_model = ServiceHelper.GetService<MainPageModel>();
+		_model = model;
 		BindingContext = _model;
 	}
 

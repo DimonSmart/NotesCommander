@@ -5,9 +5,15 @@ namespace NotesCommander;
 
 public partial class App : Application
 {
-	public App()
+	private readonly ILogger<App> _logger;
+	private readonly IErrorHandler _errorHandler;
+
+	public App(ILogger<App> logger, IErrorHandler errorHandler)
 	{
 		InitializeComponent();
+
+		_logger = logger;
+		_errorHandler = errorHandler;
 
 		AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 		TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
@@ -22,19 +28,15 @@ public partial class App : Application
 	{
 		if (e.ExceptionObject is Exception ex)
 		{
-			var logger = ServiceHelper.GetService<ILogger<App>>();
-			var errorHandler = ServiceHelper.GetService<IErrorHandler>();
-			logger?.LogError(ex, "Unhandled exception occurred");
-			errorHandler?.HandleError(ex);
+			_logger.LogError(ex, "Unhandled exception occurred");
+			_errorHandler.HandleError(ex);
 		}
 	}
 
 	private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
 	{
-		var logger = ServiceHelper.GetService<ILogger<App>>();
-		var errorHandler = ServiceHelper.GetService<IErrorHandler>();
-		logger?.LogError(e.Exception, "Unobserved task exception occurred");
-		errorHandler?.HandleError(e.Exception);
+		_logger.LogError(e.Exception, "Unobserved task exception occurred");
+		_errorHandler.HandleError(e.Exception);
 		e.SetObserved();
 	}
 }

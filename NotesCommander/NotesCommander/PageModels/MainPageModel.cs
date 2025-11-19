@@ -146,20 +146,40 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task PlayAudio(VoiceNote note)
         {
-                if (string.IsNullOrEmpty(note.AudioFilePath) || !File.Exists(note.AudioFilePath))
-                {
-                        await AppShell.DisplaySnackbarAsync("Аудиофайл не найден");
-                        return;
-                }
-
                 try
                 {
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Starting playback for note: {note.Title}");
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Audio file path: {note.AudioFilePath}");
+                        
+                        if (string.IsNullOrEmpty(note.AudioFilePath))
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: AudioFilePath is null or empty");
+                                await AppShell.DisplaySnackbarAsync("Аудиофайл не указан");
+                                return;
+                        }
+                        
+                        if (!File.Exists(note.AudioFilePath))
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: File does not exist: {note.AudioFilePath}");
+                                await AppShell.DisplaySnackbarAsync("Аудиофайл не найден");
+                                return;
+                        }
+                        
+                        var fileInfo = new FileInfo(note.AudioFilePath);
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] File size: {fileInfo.Length} bytes");
+
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Calling audio playback service...");
                         await _audioPlaybackService.PlayAsync(note.AudioFilePath);
+                        
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Playback started successfully");
                         await AppShell.DisplayToastAsync($"▶ {note.Title}");
                 }
                 catch (Exception ex)
                 {
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stack trace: {ex.StackTrace}");
                         _errorHandler.HandleError(ex);
+                        await AppShell.DisplaySnackbarAsync($"Ошибка воспроизведения: {ex.Message}");
                 }
         }
 

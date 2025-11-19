@@ -20,18 +20,6 @@
     <ScrollView>
         <VerticalStackLayout Padding="20"
                              Spacing="16">
-            <Label Text="Одновременная запись аудио и фото"
-                   Style="{StaticResource Title2}" />
-            <Label Text="Подготовьтесь к записи: запросите разрешения, затем нажмите кнопку записи и добавьте нужные снимки." />
-
-            <Border Style="{StaticResource CardStyle}">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="{Binding PermissionsStatusText}"
-                           FontAttributes="Bold" />
-                    <Button Text="Запросить разрешения"
-                            Command="{Binding RequestPermissionsCommand}" />
-                </VerticalStackLayout>
-            </Border>
 
             <Border Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="8">
