@@ -33,6 +33,9 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private ObservableCollection<VoiceNoteGroup> groupedVoiceNotes = new();
 
         [ObservableProperty]
+        private ObservableCollection<VoiceNote> debugVoiceNotes = new();
+
+        [ObservableProperty]
         private bool isBusy;
 
         [ObservableProperty]
@@ -127,6 +130,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         IsRefreshing = true;
                         await LoadNotesAsync();
+                        await EnsureDebugNotesAsync();
                 }
                 finally
                 {
@@ -330,13 +334,15 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         var notes = await _voiceNoteService.GetNotesAsync();
                         System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Loaded {notes.Count} notes from service");
                         
-                        // Фильтрация по последнему месяцу
-                        var oneMonthAgo = DateTime.UtcNow.AddMonths(-1);
-                        var filteredNotes = notes.Where(n => n.CreatedAt >= oneMonthAgo).ToList();
-                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Filtered to {filteredNotes.Count} notes (last month)");
+                        if (notes.Count == 0)
+                        {
+                                GroupedVoiceNotes = new ObservableCollection<VoiceNoteGroup>();
+                                System.Diagnostics.Debug.WriteLine("[LoadNotesAsync] No notes found, cleared collection");
+                                return;
+                        }
                         
                         // Группировка по датам
-                        var grouped = filteredNotes
+                        var grouped = notes
                                 .GroupBy(n => n.CreatedAt.Date)
                                 .OrderByDescending(g => g.Key)
                                 .Select(g => new VoiceNoteGroup(
@@ -363,6 +369,59 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         IsBusy = false;
                 }
+        }
+
+        private async Task EnsureDebugNotesAsync()
+        {
+                if (DebugVoiceNotes.Count > 0)
+                {
+                        return;
+                }
+
+                var samplePath = await EnsureSampleAudioAssetAsync("SeedFiles/audio/demo-note.wav", "debug/demo-note.wav");
+                var now = DateTime.UtcNow;
+
+                var samples = new[]
+                {
+                        CreateDebugNote("Совещание по проекту", TimeSpan.FromMinutes(2) + TimeSpan.FromSeconds(15), VoiceNoteRecognitionStatus.Recognizing, samplePath, now.AddMinutes(-5)),
+                        CreateDebugNote("Интервью с экспертом", TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(40), VoiceNoteRecognitionStatus.Ready, samplePath, now.AddMinutes(-15)),
+                        CreateDebugNote("Идея для заметки", TimeSpan.FromSeconds(48), VoiceNoteRecognitionStatus.InQueue, samplePath, now.AddMinutes(-30)),
+                        CreateDebugNote("Отчёт для руководителя", TimeSpan.FromMinutes(3) + TimeSpan.FromSeconds(5), VoiceNoteRecognitionStatus.Ready, samplePath, now.AddHours(-2)),
+                        CreateDebugNote("Утренний stand-up", TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(20), VoiceNoteRecognitionStatus.Recognizing, samplePath, now.AddHours(-5))
+                };
+
+                DebugVoiceNotes = new ObservableCollection<VoiceNote>(samples);
+        }
+
+        private static VoiceNote CreateDebugNote(string title, TimeSpan duration, VoiceNoteRecognitionStatus status, string audioPath, DateTime timestamp)
+                => new()
+                {
+                        Title = title,
+                        Duration = duration,
+                        RecognitionStatus = status,
+                        AudioFilePath = audioPath,
+                        CategoryLabel = "Отладка",
+                        CreatedAt = timestamp,
+                        UpdatedAt = timestamp
+                };
+
+        private static async Task<string> EnsureSampleAudioAssetAsync(string resourcePath, string destinationFileName)
+        {
+                var destination = Path.Combine(FileSystem.AppDataDirectory, destinationFileName);
+                var directory = Path.GetDirectoryName(destination);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                        Directory.CreateDirectory(directory);
+                }
+
+                if (!File.Exists(destination))
+                {
+                        await using var sourceStream = await FileSystem.OpenAppPackageFileAsync(resourcePath);
+                        await using var destinationStream = File.Create(destination);
+                        await sourceStream.CopyToAsync(destinationStream);
+                }
+
+                return destination;
         }
         
         private static string FormatDateGroupHeader(DateTime date)

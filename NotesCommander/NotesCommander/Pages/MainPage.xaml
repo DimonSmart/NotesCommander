@@ -30,57 +30,105 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto">
-        <!-- Отладочная информация -->
-        <VerticalStackLayout Grid.Row="0" Padding="10" BackgroundColor="LightYellow">
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout Grid.Row="0" Padding="12" BackgroundColor="LightYellow">
             <Label Text="=== ОТЛАДКА ===" FontSize="14" TextColor="Red" FontAttributes="Bold" />
             <Label Text="{Binding GroupedVoiceNotes.Count, StringFormat='GroupedVoiceNotes.Count={0}'}" FontSize="12" TextColor="Black" />
         </VerticalStackLayout>
-        
-        <ScrollView Grid.Row="1">
-            <VerticalStackLayout>
-                <!-- Простой список для отладки -->
-                <CollectionView ItemsSource="{Binding GroupedVoiceNotes}"
-                                Margin="10">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="models:VoiceNoteGroup">
-                            <VerticalStackLayout BackgroundColor="LightBlue" Padding="5" Margin="5">
-                                <Label Text="{Binding DateGroupDisplay}" FontAttributes="Bold" TextColor="Blue" />
-                                <Label Text="{Binding Count, StringFormat='Items in group: {0}'}" TextColor="Green" />
-                                
-                                <!-- Список заметок в группе -->
-                                <CollectionView ItemsSource="{Binding .}" Margin="10,0,0,0">
-                                    <CollectionView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:VoiceNote">
-                                            <Border BackgroundColor="White" Padding="10" Margin="5">
-                                                <VerticalStackLayout>
-                                                    <Label Text="{Binding Title}" FontAttributes="Bold" />
-                                                    <Label Text="{Binding Duration, StringFormat='Duration: {0}'}" FontSize="12" />
-                                                    <Label Text="{Binding RecognitionStatus, StringFormat='Status: {0}'}" FontSize="12" />
-                                                    <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
-                                                    <Button Text="▶ Play" 
-                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, Path=PlayAudioCommand}"
-                                                            CommandParameter="{Binding .}"
-                                                            BackgroundColor="Green"
-                                                            TextColor="White"
-                                                            Margin="0,5,0,0" />
-                                                </VerticalStackLayout>
-                                            </Border>
-                                        </DataTemplate>
-                                    </CollectionView.ItemTemplate>
-                                </CollectionView>
+
+        <Grid Grid.Row="1">
+            <CollectionView ItemsSource="{Binding GroupedVoiceNotes}"
+                            IsGrouped="True"
+                            SelectionMode="None"
+                            Margin="12,0,12,12">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="8" Margin="0,0,0,12">
+                        <Label Text="Примеры заметок (диагностика привязок)"
+                               FontAttributes="Bold"
+                               TextColor="Gray" />
+
+                        <VerticalStackLayout Spacing="8"
+                                             BindableLayout.ItemsSource="{Binding DebugVoiceNotes}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="models:VoiceNote">
+                                    <Border BackgroundColor="#FFFFFF"
+                                            Stroke="#DDDDDD"
+                                            StrokeThickness="1"
+                                            Padding="12"
+                                            Margin="0,0,0,8">
+                                        <VerticalStackLayout>
+                                            <Label Text="{Binding Title}"
+                                                   FontAttributes="Bold"
+                                                   FontSize="16" />
+                                            <Label Text="{Binding DurationDisplay, StringFormat='Длительность: {0}'}"
+                                                   FontSize="12" />
+                                            <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Статус: {0}'}"
+                                                   FontSize="12" />
+                                            <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}"
+                                                   FontSize="10" />
+                                            <Button Text="▶ Воспроизвести"
+                                                    Command="{Binding Path=BindingContext.PlayAudioCommand, Source={x:Reference OverviewPage}}"
+                                                    CommandParameter="{Binding .}"
+                                                    BackgroundColor="#4CAF50"
+                                                    TextColor="White"
+                                                    Margin="0,6,0,0" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate x:DataType="models:VoiceNoteGroup">
+                        <Border BackgroundColor="LightBlue" Padding="8" Margin="0,0,0,6">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding DateGroupDisplay}"
+                                       FontAttributes="Bold"
+                                       FontSize="16"
+                                       TextColor="Blue" />
+                                <Label Text="{Binding Count, StringFormat='Items in group: {0}'}"
+                                       FontSize="12"
+                                       TextColor="Green" />
                             </VerticalStackLayout>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </VerticalStackLayout>
-        </ScrollView>
-        
-        <Button Grid.Row="2"
-                Text="Добавить голосовую заметку"
-                Margin="20,0,20,24"
-                HeightRequest="48"
-                Command="{Binding AddVoiceNoteCommand}"
-                SemanticProperties.Description="Добавить голосовую заметку" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:VoiceNote">
+                        <Border BackgroundColor="White" Padding="12" Margin="0,0,0,8" Stroke="#EEEEEE" StrokeThickness="1" >
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                <Label Text="{Binding DurationDisplay, StringFormat='Длительность: {0}'}" FontSize="12" />
+                                <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Статус: {0}'}" FontSize="12" />
+                                <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
+                                <Button Text="▶ Воспроизвести"
+                                        Command="{Binding Path=BindingContext.PlayAudioCommand, Source={x:Reference OverviewPage}}"
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="Green"
+                                        TextColor="White"
+                                        Margin="0,5,0,0" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="+"
+                    WidthRequest="56"
+                    HeightRequest="56"
+                    CornerRadius="28"
+                    BackgroundColor="#5B3CC4"
+                    TextColor="White"
+                    FontSize="24"
+                    FontAttributes="Bold"
+                    HorizontalOptions="End"
+                    VerticalOptions="End"
+                    Margin="0,0,12,12"
+                    Command="{Binding AddVoiceNoteCommand}"
+                    SemanticProperties.Description="Добавить голосовую заметку" />
+        </Grid>
     </Grid>
 </ContentPage>
