@@ -1,13 +1,25 @@
-﻿using NotesCommander.Models;
-using NotesCommander.PageModels;
+﻿using NotesCommander.PageModels;
+using NotesCommander.Services;
 
 namespace NotesCommander.Pages;
 
 public partial class MainPage : ContentPage
 {
-	public MainPage(MainPageModel model)
+	private readonly MainPageModel _model;
+
+	public MainPage()
 	{
 		InitializeComponent();
-		BindingContext = model;
+		_model = ServiceHelper.GetService<MainPageModel>();
+		BindingContext = _model;
+	}
+
+	protected override async void OnAppearing()
+	{
+		base.OnAppearing();
+		if (_model.AppearingCommand.CanExecute(null))
+		{
+			await _model.AppearingCommand.ExecuteAsync(null);
+		}
 	}
 }

@@ -8,7 +8,7 @@ namespace NotesCommander.PageModels;
 
 public partial class SettingsPageModel : ObservableObject
 {
-	private readonly ModalErrorHandler _errorHandler;
+	private readonly IErrorHandler _errorHandler;
 
 	[ObservableProperty]
 	[NotifyPropertyChangedFor(nameof(PermissionsStatusText))]
@@ -30,7 +30,7 @@ public partial class SettingsPageModel : ObservableObject
 		? "✓ Разрешено"
 		: "✗ Не разрешено";
 
-	public SettingsPageModel(ModalErrorHandler errorHandler)
+	public SettingsPageModel(IErrorHandler errorHandler)
 	{
 		_errorHandler = errorHandler;
 		CheckPermissions();
@@ -114,6 +114,13 @@ public partial class SettingsPageModel : ObservableObject
 	{
 		await RequestMicrophonePermission();
 		await RequestMediaPermission();
+	}
+
+	[RelayCommand]
+	private void ResetSeedData()
+	{
+		Preferences.Default.Remove("is_seeded");
+		AppShell.DisplayToastAsync("Флаг инициализации сброшен. Перезапустите приложение.").FireAndForgetSafeAsync();
 	}
 
 	private async void CheckPermissions()

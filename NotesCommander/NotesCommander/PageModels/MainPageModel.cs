@@ -19,8 +19,10 @@ namespace NotesCommander.PageModels;
 public partial class MainPageModel : ObservableObject, IDisposable
 {
         private readonly IVoiceNoteService _voiceNoteService;
-        private readonly ModalErrorHandler _errorHandler;
+        private readonly IErrorHandler _errorHandler;
         private readonly NoteSyncService _noteSyncService;
+        private readonly IAudioPlaybackService _audioPlaybackService;
+        private readonly SeedDataService _seedDataService;
         private readonly IServiceProvider _serviceProvider;
         private readonly Timer _recordingTimer = new(1000);
         private bool _isNavigatedTo;
@@ -63,12 +65,14 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
         public bool HasDraftPhotos => DraftPhotoPaths.Count > 0;
 
-        public MainPageModel(IVoiceNoteService voiceNoteService, ModalErrorHandler errorHandler, IServiceProvider serviceProvider, NoteSyncService noteSyncService)
+        public MainPageModel(IVoiceNoteService voiceNoteService, IErrorHandler errorHandler, IServiceProvider serviceProvider, NoteSyncService noteSyncService, SeedDataService seedDataService, IAudioPlaybackService audioPlaybackService)
         {
                 _voiceNoteService = voiceNoteService;
                 _errorHandler = errorHandler;
                 _serviceProvider = serviceProvider;
                 _noteSyncService = noteSyncService;
+                _seedDataService = seedDataService;
+                _audioPlaybackService = audioPlaybackService;
 
                 DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
 
@@ -85,14 +89,34 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task Appearing()
         {
-                if (!_dataLoaded)
+                try
                 {
-                        await Refresh();
-                        _dataLoaded = true;
+                        System.Diagnostics.Debug.WriteLine($"[Appearing] Starting... _dataLoaded={_dataLoaded}, _isNavigatedTo={_isNavigatedTo}");
+                        
+                        // Тестируем базу данных
+                        await TestDbHelper.TestDatabase();
+                        
+                        if (!_dataLoaded)
+                        {
+                                System.Diagnostics.Debug.WriteLine("[Appearing] Initializing seed data...");
+                                await InitializeSeedDataIfNeeded();
+                                
+                                System.Diagnostics.Debug.WriteLine("[Appearing] Refreshing data...");
+                                await Refresh();
+                                _dataLoaded = true;
+                        }
+                        else if (!_isNavigatedTo)
+                        {
+                                System.Diagnostics.Debug.WriteLine("[Appearing] Refreshing data (not navigated to)...");
+                                await Refresh();
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"[Appearing] Completed. GroupedVoiceNotes.Count={GroupedVoiceNotes.Count}");
                 }
-                else if (!_isNavigatedTo)
+                catch (Exception ex)
                 {
-                        await Refresh();
+                        System.Diagnostics.Debug.WriteLine($"[Appearing] ERROR: {ex.Message}\n{ex.StackTrace}");
+                        throw;
                 }
         }
 
@@ -104,10 +128,6 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         IsRefreshing = true;
                         await LoadNotesAsync();
                 }
-                catch (Exception ex)
-                {
-                        _errorHandler.HandleError(ex);
-                }
                 finally
                 {
                         IsRefreshing = false;
@@ -117,12 +137,25 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task OpenNoteDetail(VoiceNote note)
         {
+                var detailPage = _serviceProvider.GetRequiredService<NoteDetailPage>();
+                var pageModel = _serviceProvider.GetRequiredService<NoteDetailPageModel>();
+                pageModel.LoadNote(note);
+                await Shell.Current.Navigation.PushModalAsync(detailPage);
+        }
+
+        [RelayCommand]
+        private async Task PlayAudio(VoiceNote note)
+        {
+                if (string.IsNullOrEmpty(note.AudioFilePath) || !File.Exists(note.AudioFilePath))
+                {
+                        await AppShell.DisplaySnackbarAsync("Аудиофайл не найден");
+                        return;
+                }
+
                 try
                 {
-                        var detailPage = _serviceProvider.GetRequiredService<NoteDetailPage>();
-                        var pageModel = _serviceProvider.GetRequiredService<NoteDetailPageModel>();
-                        pageModel.LoadNote(note);
-                        await Shell.Current.Navigation.PushModalAsync(detailPage);
+                        await _audioPlaybackService.PlayAsync(note.AudioFilePath);
+                        await AppShell.DisplayToastAsync($"▶ {note.Title}");
                 }
                 catch (Exception ex)
                 {
@@ -255,6 +288,18 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 _recordingTimer.Stop();
                 _recordingTimer.Dispose();
+                _audioPlaybackService.Stop();
+        }
+
+        private async Task InitializeSeedDataIfNeeded()
+        {
+                var isSeeded = Preferences.Default.Get("is_seeded", false);
+                var existingNotes = await _voiceNoteService.GetNotesAsync();
+                if (!isSeeded || existingNotes.Count == 0)
+                {
+                        await _seedDataService.LoadSeedDataAsync();
+                        Preferences.Default.Set("is_seeded", true);
+                }
         }
 
         private async Task LoadNotesAsync()
@@ -263,10 +308,12 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         IsBusy = true;
                         var notes = await _voiceNoteService.GetNotesAsync();
+                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Loaded {notes.Count} notes from service");
                         
                         // Фильтрация по последнему месяцу
                         var oneMonthAgo = DateTime.UtcNow.AddMonths(-1);
                         var filteredNotes = notes.Where(n => n.CreatedAt >= oneMonthAgo).ToList();
+                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Filtered to {filteredNotes.Count} notes (last month)");
                         
                         // Группировка по датам
                         var grouped = filteredNotes
@@ -278,7 +325,19 @@ public partial class MainPageModel : ObservableObject, IDisposable
                                         g.OrderByDescending(n => n.CreatedAt)))
                                 .ToList();
                         
+                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Created {grouped.Count} groups");
+                        foreach (var group in grouped)
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync]   Group '{group.DateGroupDisplay}' has {group.Count} notes");
+                        }
+                        
                         GroupedVoiceNotes = new ObservableCollection<VoiceNoteGroup>(grouped);
+                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] GroupedVoiceNotes assigned. Count={GroupedVoiceNotes.Count}");
+                }
+                catch (Exception ex)
+                {
+                        System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] ERROR: {ex.Message}\n{ex.StackTrace}");
+                        throw;
                 }
                 finally
                 {

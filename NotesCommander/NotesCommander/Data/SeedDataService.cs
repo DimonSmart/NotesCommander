@@ -1,6 +1,4 @@
 using System.IO;
-using System.Linq;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using NotesCommander.Models;
@@ -12,7 +10,6 @@ public class SeedDataService
         private readonly VoiceNoteRepository _voiceNoteRepository;
         private readonly TagRepository _tagRepository;
         private readonly CategoryRepository _categoryRepository;
-        private readonly string _seedDataFilePath = "SeedData.json";
         private readonly ILogger<SeedDataService> _logger;
 
         public SeedDataService(VoiceNoteRepository voiceNoteRepository, TagRepository tagRepository, CategoryRepository categoryRepository, ILogger<SeedDataService> logger)
@@ -25,91 +22,84 @@ public class SeedDataService
 
         public async Task LoadSeedDataAsync()
         {
+                _logger.LogInformation("Starting seed data loading...");
                 await ClearTablesAsync();
 
-                await using Stream templateStream = await FileSystem.OpenAppPackageFileAsync(_seedDataFilePath);
-
-                VoiceNotesSeedPayload? payload = null;
-                try
+                // Создаём категории
+                var categories = new[]
                 {
-                        payload = JsonSerializer.Deserialize(templateStream, JsonContext.Default.VoiceNotesSeedPayload);
+                        new Category { Title = "Работа", Color = "#3068df" },
+                        new Category { Title = "Личное", Color = "#f97316" },
+                        new Category { Title = "Идеи", Color = "#10b981" }
+                };
+
+                foreach (var category in categories)
+                {
+                        await _categoryRepository.SaveItemAsync(category);
                 }
-                catch (Exception e)
+                _logger.LogInformation("Categories created: {Count}", categories.Length);
+
+                // Создаём теги
+                var tags = new[]
                 {
-                        _logger.LogError(e, "Error deserializing seed data");
+                        new Tag { Title = "демо", Color = "#9333ea" },
+                        new Tag { Title = "история", Color = "#14b8a6" }
+                };
+
+                foreach (var tag in tags)
+                {
+                        await _tagRepository.SaveItemAsync(tag);
                 }
+                _logger.LogInformation("Tags created: {Count}", tags.Length);
 
-                if (payload is null)
+                // Создаём демонстрационную заметку
+                var audioPath = await EnsureSeedFileAsync("SeedFiles/audio/demo-note.wav");
+                var photoPath = await EnsureSeedFileAsync("SeedFiles/photos/demo-photo.png");
+
+                _logger.LogInformation("Audio file path: {AudioPath}", audioPath);
+                _logger.LogInformation("Photo file path: {PhotoPath}", photoPath);
+
+                var demoNote = new VoiceNote
                 {
-                        return;
-                }
-
-                try
-                {
-                        foreach (var category in payload.Categories)
+                        Title = "Добро пожаловать в NotesCommander",
+                        AudioFilePath = audioPath,
+                        Duration = TimeSpan.FromSeconds(11),
+                        OriginalText = "Это демонстрационная заметка для знакомства с приложением.",
+                        RecognizedText = "And so my fellow Americans ask not what your country can do for you ask what you can do for your country.",
+                        CategoryLabel = "Идеи",
+                        RecognitionStatus = VoiceNoteRecognitionStatus.Ready,
+                        SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        Photos = new List<VoiceNotePhoto>
                         {
-                                await _categoryRepository.SaveItemAsync(category);
-                        }
-
-                        foreach (var tag in payload.Tags)
-                        {
-                                await _tagRepository.SaveItemAsync(tag);
-                        }
-
-                        foreach (var seed in payload.Notes)
-                        {
-                                var note = new VoiceNote
+                                new VoiceNotePhoto
                                 {
-                                        Title = string.IsNullOrWhiteSpace(seed.Title)
-                                                ? $"Заметка {DateTime.Now:HH:mm}"
-                                                : seed.Title,
-                                        AudioFilePath = EnsureSeedFile(seed.AudioFile),
-                                        Duration = TimeSpan.FromSeconds(seed.DurationSeconds),
-                                        OriginalText = seed.OriginalText,
-                                        RecognizedText = seed.RecognizedText,
-                                        CategoryLabel = seed.CategoryLabel,
-                                        RecognitionStatus = seed.RecognitionStatus,
-                                        SyncStatus = VoiceNoteSyncStatus.LocalOnly,
-                                        CreatedAt = DateTime.UtcNow,
-                                        UpdatedAt = DateTime.UtcNow,
-                                        Photos = seed.Photos
-                                                .Select(photo => new VoiceNotePhoto
-                                                {
-                                                        FilePath = EnsureSeedFile(photo),
-                                                        CreatedAt = DateTime.UtcNow
-                                                })
-                                                .ToList(),
-                                        Tags = seed.Tags
-                                                .Select(tag => new VoiceNoteTag { Value = tag })
-                                                .ToList()
-                                };
-
-                                await _voiceNoteRepository.SaveAsync(note);
+                                        FilePath = photoPath,
+                                        CreatedAt = DateTime.UtcNow
+                                }
+                        },
+                        Tags = new List<VoiceNoteTag>
+                        {
+                                new VoiceNoteTag { Value = "демо" },
+                                new VoiceNoteTag { Value = "история" }
                         }
-                }
-                catch (Exception e)
-                {
-                        _logger.LogError(e, "Error saving seed data");
-                        throw;
-                }
+                };
+
+                await _voiceNoteRepository.SaveAsync(demoNote);
+                _logger.LogInformation("Demo note created successfully with ID: {Id}", demoNote.LocalId);
         }
 
         private async Task ClearTablesAsync()
         {
-                try
-                {
-                        await Task.WhenAll(
-                                _voiceNoteRepository.DropTablesAsync(),
-                                _tagRepository.DropTableAsync(),
-                                _categoryRepository.DropTableAsync());
-                }
-                catch (Exception e)
-                {
-                        _logger.LogError(e, "Error clearing tables");
-                }
+                await Task.WhenAll(
+                        _voiceNoteRepository.DropTablesAsync(),
+                        _tagRepository.DropTableAsync(),
+                        _categoryRepository.DropTableAsync());
+                _logger.LogInformation("Tables cleared successfully");
         }
 
-        private static string EnsureSeedFile(string fileName)
+        private async Task<string> EnsureSeedFileAsync(string fileName)
         {
                 if (string.IsNullOrWhiteSpace(fileName))
                 {
@@ -124,9 +114,22 @@ public class SeedDataService
                         Directory.CreateDirectory(directory);
                 }
 
+                // Копируем файл из Resources/Raw если он ещё не скопирован
                 if (!File.Exists(destination))
                 {
-                        File.WriteAllBytes(destination, Array.Empty<byte>());
+                        try
+                        {
+                                await using var sourceStream = await FileSystem.OpenAppPackageFileAsync(fileName);
+                                await using var destinationStream = File.Create(destination);
+                                await sourceStream.CopyToAsync(destinationStream);
+                                _logger.LogInformation("Copied seed file from {Source} to {Destination}", fileName, destination);
+                        }
+                        catch (Exception ex)
+                        {
+                                _logger.LogWarning(ex, "Could not copy seed file {FileName}, file may not exist in Resources", fileName);
+                                // Если файл не существует в ресурсах (например, demo-photo.png не добавлен), возвращаем пустую строку
+                                return string.Empty;
+                        }
                 }
 
                 return destination;

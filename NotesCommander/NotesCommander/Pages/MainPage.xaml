@@ -20,7 +20,7 @@
                 Command="{Binding NavigatedFromCommand}" />
         <toolkit:EventToCommandBehavior
                 BindingContext="{Binding Path=BindingContext, Source={x:Reference OverviewPage}, x:DataType=ContentPage}"
-                EventName="Appearing"
+                EventName="Loaded"
                 Command="{Binding AppearingCommand}" />
     </ContentPage.Behaviors>
 
@@ -30,115 +30,53 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="*,Auto">
-        <RefreshView Grid.Row="0"
-                     IsRefreshing="{Binding IsRefreshing}"
-                     Command="{Binding RefreshCommand}">
-            <CollectionView ItemsSource="{Binding GroupedVoiceNotes}"
-                            Margin="0"
-                            SelectionMode="None"
-                            IsGrouped="True"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}">
-                <CollectionView.EmptyView>
-                    <VerticalStackLayout Padding="24"
-                                         Spacing="8"
-                                         HorizontalOptions="Center"
-                                         VerticalOptions="Center">
-                        <Label Text="Заметок пока нет"
-                               Style="{StaticResource Title3}"
-                               HorizontalOptions="Center" />
-                        <Label Text="Нажмите «Добавить голосовую заметку», чтобы записать первую идею." />
-                    </VerticalStackLayout>
-                </CollectionView.EmptyView>
-                <CollectionView.GroupHeaderTemplate>
-                    <DataTemplate x:DataType="models:VoiceNoteGroup">
-                        <Label Text="{Binding DateGroupDisplay}"
-                               Padding="20,16,20,8"
-                               Style="{StaticResource Title3}"
-                               TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}" />
-                    </DataTemplate>
-                </CollectionView.GroupHeaderTemplate>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:VoiceNote">
-                        <Border Style="{StaticResource CardStyle}"
-                                Margin="20,0,20,12">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto"
-                                  ColumnSpacing="12"
-                                  RowDefinitions="Auto">
-                                <!-- Мини-превью фото -->
-                                <Border Grid.Column="0"
-                                        WidthRequest="60"
-                                        HeightRequest="60"
-                                        BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="12" />
-                                    </Border.StrokeShape>
-                                    <Grid>
-                                        <Image Source="{Binding PhotoPreviewPath}"
-                                               Aspect="AspectFill"
-                                               HorizontalOptions="Fill"
-                                               VerticalOptions="Fill"
-                                               IsVisible="{Binding HasPhotoPreview}" />
-                                        <Label Text="{Binding PhotoPreviewFallbackGlyph}"
-                                               FontSize="24"
-                                               HorizontalOptions="Center"
-                                               VerticalOptions="Center"
-                                               IsVisible="{Binding HasPhotoPreview, Converter={StaticResource InvertedBoolConverter}}" />
-                                    </Grid>
-                                </Border>
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Отладочная информация -->
+        <VerticalStackLayout Grid.Row="0" Padding="10" BackgroundColor="LightYellow">
+            <Label Text="=== ОТЛАДКА ===" FontSize="14" TextColor="Red" FontAttributes="Bold" />
+            <Label Text="{Binding GroupedVoiceNotes.Count, StringFormat='GroupedVoiceNotes.Count={0}'}" FontSize="12" TextColor="Black" />
+        </VerticalStackLayout>
+        
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout>
+                <!-- Простой список для отладки -->
+                <CollectionView ItemsSource="{Binding GroupedVoiceNotes}"
+                                Margin="10">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:VoiceNoteGroup">
+                            <VerticalStackLayout BackgroundColor="LightBlue" Padding="5" Margin="5">
+                                <Label Text="{Binding DateGroupDisplay}" FontAttributes="Bold" TextColor="Blue" />
+                                <Label Text="{Binding Count, StringFormat='Items in group: {0}'}" TextColor="Green" />
                                 
-                                <!-- Информация о заметке -->
-                                <VerticalStackLayout Grid.Column="1"
-                                                     Spacing="4"
-                                                     VerticalOptions="Center">
-                                    <Label Text="{Binding Title}"
-                                           FontSize="16"
-                                           FontAttributes="Bold"
-                                           LineBreakMode="TailTruncation"
-                                           MaxLines="1" />
-                                    <Label Text="{Binding DurationDisplay}"
-                                           TextColor="{StaticResource Gray400}"
-                                           FontSize="12" />
-                                    <Label Text="{Binding RecognitionStatusDisplay}"
-                                           TextColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
-                                           FontSize="11" />
-                                </VerticalStackLayout>
-                                
-                                <!-- Кнопка воспроизведения аудио -->
-                                <Button Grid.Column="2"
-                                        Text="▶"
-                                        WidthRequest="44"
-                                        HeightRequest="44"
-                                        CornerRadius="22"
-                                        FontSize="16"
-                                        Padding="0"
-                                        BackgroundColor="{AppThemeBinding Light={StaticResource Primary600}, Dark={StaticResource Primary200}}"
-                                        TextColor="White"
-                                        VerticalOptions="Center"
-                                        SemanticProperties.Hint="Воспроизвести аудио" />
-                                
-                                <!-- Кнопка открытия детальной карточки -->
-                                <Button Grid.Column="3"
-                                        Text="→"
-                                        WidthRequest="44"
-                                        HeightRequest="44"
-                                        CornerRadius="22"
-                                        FontSize="20"
-                                        Padding="0"
-                                        BackgroundColor="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray700}}"
-                                        TextColor="{AppThemeBinding Light={StaticResource Gray900}, Dark={StaticResource Gray100}}"
-                                        VerticalOptions="Center"
-                                        Command="{Binding Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, Path=OpenNoteDetailCommand}"
-                                        CommandParameter="{Binding .}"
-                                        SemanticProperties.Hint="Открыть детали заметки" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </RefreshView>
-
-        <Button Grid.Row="1"
+                                <!-- Список заметок в группе -->
+                                <CollectionView ItemsSource="{Binding .}" Margin="10,0,0,0">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:VoiceNote">
+                                            <Border BackgroundColor="White" Padding="10" Margin="5">
+                                                <VerticalStackLayout>
+                                                    <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                                    <Label Text="{Binding Duration, StringFormat='Duration: {0}'}" FontSize="12" />
+                                                    <Label Text="{Binding RecognitionStatus, StringFormat='Status: {0}'}" FontSize="12" />
+                                                    <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
+                                                    <Button Text="▶ Play" 
+                                                            Command="{Binding Source={RelativeSource AncestorType={x:Type pageModels:MainPageModel}}, Path=PlayAudioCommand}"
+                                                            CommandParameter="{Binding .}"
+                                                            BackgroundColor="Green"
+                                                            TextColor="White"
+                                                            Margin="0,5,0,0" />
+                                                </VerticalStackLayout>
+                                            </Border>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+        
+        <Button Grid.Row="2"
                 Text="Добавить голосовую заметку"
                 Margin="20,0,20,24"
                 HeightRequest="48"

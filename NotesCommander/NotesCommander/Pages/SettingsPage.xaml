@@ -110,6 +110,18 @@
                         TextColor="White" />
             </VerticalStackLayout>
 
+            <!-- Отладка -->
+            <VerticalStackLayout Spacing="16">
+                <Label Text="Отладка"
+                       Style="{StaticResource Title2}" />
+                
+                <Button Text="Сбросить демо-данные"
+                        Command="{Binding ResetSeedDataCommand}"
+                        HeightRequest="48"
+                        BackgroundColor="{AppThemeBinding Light={StaticResource Orange600}, Dark={StaticResource Orange400}}"
+                        TextColor="White" />
+            </VerticalStackLayout>
+
             <!-- Информация о приложении -->
             <Border Style="{StaticResource CardStyle}"
                     Padding="20">

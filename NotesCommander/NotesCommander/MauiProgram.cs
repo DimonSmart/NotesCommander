@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using NotesCommander.Pages;
 using NotesCommander.Services;
+using Plugin.Maui.Audio;
 using Syncfusion.Maui.Toolkit.Hosting;
 
 namespace NotesCommander;
@@ -45,12 +46,14 @@ public static class MauiProgram
 		builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
-                builder.Services.AddSingleton<VoiceNoteRepository>();
-                builder.Services.AddSingleton<CategoryRepository>();
-                builder.Services.AddSingleton<TagRepository>();
-                builder.Services.AddSingleton<SeedDataService>();
-                builder.Services.AddSingleton<ModalErrorHandler>();
-                builder.Services.AddSingleton<IVoiceNoteService, VoiceNoteService>();
+				builder.Services.AddSingleton<VoiceNoteRepository>();
+				builder.Services.AddSingleton<CategoryRepository>();
+				builder.Services.AddSingleton<TagRepository>();
+				builder.Services.AddSingleton<SeedDataService>();
+				builder.Services.AddSingleton<IErrorHandler, ModalErrorHandler>();
+				builder.Services.AddSingleton<IVoiceNoteService, VoiceNoteService>();
+				builder.Services.AddSingleton<IAudioManager>(AudioManager.Current);
+				builder.Services.AddSingleton<IAudioPlaybackService, AudioPlaybackService>();
                 builder.Services.AddHttpClient(NoteSyncService.HttpClientName, client =>
                 {
                         var backendUrl = Environment.GetEnvironmentVariable("NOTESCOMMANDER_BACKEND_URL") ?? "http://localhost:5192";
@@ -58,8 +61,11 @@ public static class MauiProgram
                 });
                 builder.Services.AddSingleton<NoteSyncService>();
                 builder.Services.AddSingleton<MainPageModel>();
+                builder.Services.AddSingleton<MainPage>();
                 builder.Services.AddSingleton<ManageMetaPageModel>();
+                builder.Services.AddSingleton<ManageMetaPage>();
                 builder.Services.AddSingleton<SettingsPageModel>();
+                builder.Services.AddSingleton<SettingsPage>();
                 builder.Services.AddTransient<NoteDetailPageModel>();
                 builder.Services.AddTransient<NoteCapturePage>();
                 builder.Services.AddTransient<NoteDetailPage>();
