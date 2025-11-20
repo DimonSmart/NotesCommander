@@ -67,43 +67,6 @@
                             IsGrouped="True"
                             SelectionMode="None"
                             Margin="12,0,12,12">
-                <CollectionView.Header>
-                    <VerticalStackLayout Spacing="8" Margin="0,0,0,12">
-                        <Label Text="Примеры заметок (диагностика привязок)"
-                               FontAttributes="Bold"
-                               TextColor="Gray" />
-
-                        <VerticalStackLayout Spacing="8"
-                                             BindableLayout.ItemsSource="{Binding DebugVoiceNotes}">
-                            
-                            <BindableLayout.ItemTemplate>
-                                <DataTemplate x:DataType="models:VoiceNote">
-                                    <Border BackgroundColor="#FFFFFF"
-                                            Stroke="#DDDDDD"
-                                            StrokeThickness="1"
-                                            Padding="12"
-                                            Margin="0,0,0,8">
-                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                                            <Button Style="{StaticResource PlayStopIconButtonStyle}"
-                                                    Clicked="OnPlayButtonClicked"
-                                                    VerticalOptions="Start" />
-
-                                            <VerticalStackLayout Grid.Column="1" Spacing="4">
-                                                <Label Text="{Binding Title}"
-                                                       FontAttributes="Bold"
-                                                       FontSize="16" />
-                                                <Label Text="{Binding DurationDisplay, StringFormat='Duration: {0}'}" FontSize="12" />
-                                                <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Status: {0}'}" FontSize="12" />
-                                                <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
-                                            </VerticalStackLayout>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </BindableLayout.ItemTemplate>
-                        </VerticalStackLayout>
-                    </VerticalStackLayout>
-                </CollectionView.Header>
-
                 <CollectionView.GroupHeaderTemplate>
                     <DataTemplate x:DataType="models:VoiceNoteGroup">
                         <Border BackgroundColor="LightBlue" Padding="8" Margin="0,0,0,6">

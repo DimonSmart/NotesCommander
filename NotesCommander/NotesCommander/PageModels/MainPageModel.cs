@@ -170,7 +170,6 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         IsRefreshing = true;
                         await LoadNotesAsync();
-                        await EnsureDebugNotesAsync();
                 }
                 finally
                 {

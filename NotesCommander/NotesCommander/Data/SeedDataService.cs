@@ -32,7 +32,7 @@ public class SeedDataService
                 _logger.LogInformation("Starting seed data loading...");
                 await ClearTablesAsync();
 
-                // Создаём категории
+                // Категории и теги
                 var categories = new[]
                 {
                         new Category { Title = "Работа", Color = "#3068df" },
@@ -46,7 +46,6 @@ public class SeedDataService
                 }
                 _logger.LogInformation("Categories created: {Count}", categories.Length);
 
-                // Создаём теги
                 var tags = new[]
                 {
                         new Tag { Title = "демо", Color = "#9333ea" },
@@ -59,41 +58,103 @@ public class SeedDataService
                 }
                 _logger.LogInformation("Tags created: {Count}", tags.Length);
 
-                // Создаём демонстрационную заметку
+                // Несколько примерных записей
                 var (audioPath, photoPath) = await EnsureSeedAssetsAsync();
 
                 _logger.LogInformation("Audio file path: {AudioPath}", audioPath);
                 _logger.LogInformation("Photo file path: {PhotoPath}", photoPath);
 
-                var demoNote = new VoiceNote
+                var now = DateTime.UtcNow;
+                var seedNotes = new[]
                 {
-                        Title = "Добро пожаловать в NotesCommander",
-                        AudioFilePath = audioPath,
-                        Duration = TimeSpan.FromSeconds(11),
-                        OriginalText = "Это демонстрационная заметка для знакомства с приложением.",
-                        RecognizedText = "And so my fellow Americans ask not what your country can do for you ask what you can do for your country.",
-                        CategoryLabel = "Идеи",
-                        RecognitionStatus = VoiceNoteRecognitionStatus.Ready,
-                        SyncStatus = VoiceNoteSyncStatus.LocalOnly,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        Photos = new List<VoiceNotePhoto>
+                        new VoiceNote
                         {
-                                new VoiceNotePhoto
+                                Title = "Утренний стендап",
+                                AudioFilePath = audioPath,
+                                Duration = TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(20),
+                                OriginalText = "Быстрый статус: закончил прототип, сегодня ревью и тесты.",
+                                RecognizedText = "Быстрый статус: закончил прототип, сегодня ревью и тесты.",
+                                CategoryLabel = "Работа",
+                                RecognitionStatus = VoiceNoteRecognitionStatus.Ready,
+                                SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                                CreatedAt = now.AddHours(-1),
+                                UpdatedAt = now.AddHours(-1),
+                                Photos = new List<VoiceNotePhoto>
                                 {
-                                        FilePath = photoPath,
-                                        CreatedAt = DateTime.UtcNow
+                                        new VoiceNotePhoto { FilePath = photoPath, CreatedAt = now }
+                                },
+                                Tags = new List<VoiceNoteTag>
+                                {
+                                        new VoiceNoteTag { Value = "команда" },
+                                        new VoiceNoteTag { Value = "ежедневка" }
                                 }
                         },
-                        Tags = new List<VoiceNoteTag>
+                        new VoiceNote
                         {
-                                new VoiceNoteTag { Value = "демо" },
-                                new VoiceNoteTag { Value = "история" }
+                                Title = "Идея для заметки",
+                                AudioFilePath = audioPath,
+                                Duration = TimeSpan.FromSeconds(42),
+                                OriginalText = "Напомнить про новый сценарий онбординга.",
+                                RecognizedText = null,
+                                CategoryLabel = "Личное",
+                                RecognitionStatus = VoiceNoteRecognitionStatus.InQueue,
+                                SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                                CreatedAt = now.AddHours(-6),
+                                UpdatedAt = now.AddHours(-6),
+                                Tags = new List<VoiceNoteTag> { new VoiceNoteTag { Value = "идея" } }
+                        },
+                        new VoiceNote
+                        {
+                                Title = "Интервью",
+                                AudioFilePath = audioPath,
+                                Duration = TimeSpan.FromMinutes(4) + TimeSpan.FromSeconds(5),
+                                OriginalText = "Черновик вопросов для кандидата.",
+                                RecognizedText = null,
+                                CategoryLabel = "Работа",
+                                RecognitionStatus = VoiceNoteRecognitionStatus.Recognizing,
+                                SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                                CreatedAt = now.AddDays(-1).AddHours(-2),
+                                UpdatedAt = now.AddDays(-1).AddHours(-2),
+                                Tags = new List<VoiceNoteTag>
+                                {
+                                        new VoiceNoteTag { Value = "интервью" }
+                                }
+                        },
+                        new VoiceNote
+                        {
+                                Title = "Вчерашний отчёт",
+                                AudioFilePath = audioPath,
+                                Duration = TimeSpan.FromMinutes(2),
+                                OriginalText = "Итоги дня: закрыли задачу по импорту файлов.",
+                                RecognizedText = "Итоги дня: закрыли задачу по импорту файлов.",
+                                CategoryLabel = "Работа",
+                                RecognitionStatus = VoiceNoteRecognitionStatus.Ready,
+                                SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                                CreatedAt = now.AddDays(-1).AddHours(-5),
+                                UpdatedAt = now.AddDays(-1).AddHours(-5),
+                                Tags = new List<VoiceNoteTag> { new VoiceNoteTag { Value = "отчёт" } }
+                        },
+                        new VoiceNote
+                        {
+                                Title = "Напоминание купить подарки",
+                                AudioFilePath = audioPath,
+                                Duration = TimeSpan.FromSeconds(18),
+                                OriginalText = "Список подарков на выходные.",
+                                RecognizedText = null,
+                                CategoryLabel = "Личное",
+                                RecognitionStatus = VoiceNoteRecognitionStatus.Error,
+                                SyncStatus = VoiceNoteSyncStatus.LocalOnly,
+                                CreatedAt = now.AddDays(-3).AddHours(-1),
+                                UpdatedAt = now.AddDays(-3).AddHours(-1),
+                                Tags = new List<VoiceNoteTag> { new VoiceNoteTag { Value = "покупки" } }
                         }
                 };
 
-                await _voiceNoteRepository.SaveAsync(demoNote);
-                _logger.LogInformation("Demo note created successfully with ID: {Id}", demoNote.LocalId);
+                foreach (var note in seedNotes)
+                {
+                        await _voiceNoteRepository.SaveAsync(note);
+                        _logger.LogInformation("Seed note created: {Title} (Status={Status}, CreatedAt={CreatedAt})", note.Title, note.RecognitionStatus, note.CreatedAt);
+                }
         }
 
         private async Task ClearTablesAsync()
