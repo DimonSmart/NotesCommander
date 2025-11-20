@@ -34,6 +34,11 @@
         <VerticalStackLayout Grid.Row="0" Padding="12" BackgroundColor="LightYellow">
             <Label Text="=== ОТЛАДКА ===" FontSize="14" TextColor="Red" FontAttributes="Bold" />
             <Label Text="{Binding GroupedVoiceNotes.Count, StringFormat='GroupedVoiceNotes.Count={0}'}" FontSize="12" TextColor="Black" />
+            <Label Text="{Binding DebugVmName, StringFormat='VM: {0}'}" FontSize="12" TextColor="Black" />
+            <Label Text="{Binding PlayCommandStatus}" FontSize="12" TextColor="DarkBlue" />
+            <Label Text="{Binding PlayButtonClickedCount, StringFormat='Button clicked events: {0}'}" FontSize="12" TextColor="OrangeRed" />
+            <Label Text="{Binding PlayAudioInvokedCount, StringFormat='Play command invoked: {0}'}" FontSize="12" TextColor="DarkGreen" />
+            <Label Text="{Binding LastPlayAudioStatus, StringFormat='Last play status: {0}'}" FontSize="12" TextColor="DarkRed" LineBreakMode="TailTruncation" />
         </VerticalStackLayout>
 
         <Grid Grid.Row="1">
@@ -67,11 +72,19 @@
                                             <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}"
                                                    FontSize="10" />
                                             <Button Text="▶ Воспроизвести"
-                                                    Command="{Binding Path=BindingContext.PlayAudioCommand, Source={x:Reference OverviewPage}}"
+                                                    Clicked="OnPlayButtonClicked"
+                                                    Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.PlayAudioCommand}"
                                                     CommandParameter="{Binding .}"
                                                     BackgroundColor="#4CAF50"
                                                     TextColor="White"
-                                                    Margin="0,6,0,0" />
+                                                    Margin="0,6,0,0">
+                                                <Button.Behaviors>
+                                                    <toolkit:EventToCommandBehavior
+                                                            EventName="Clicked"
+                                                            Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.RecordPlayButtonClickCommand}"
+                                                            CommandParameter="{Binding .}" />
+                                                </Button.Behaviors>
+                                            </Button>
                                         </VerticalStackLayout>
                                     </Border>
                                 </DataTemplate>
@@ -105,11 +118,19 @@
                                 <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Статус: {0}'}" FontSize="12" />
                                 <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
                                 <Button Text="▶ Воспроизвести"
-                                        Command="{Binding Path=BindingContext.PlayAudioCommand, Source={x:Reference OverviewPage}}"
+                                        Clicked="OnPlayButtonClicked"
+                                        Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.PlayAudioCommand}"
                                         CommandParameter="{Binding .}"
                                         BackgroundColor="Green"
                                         TextColor="White"
-                                        Margin="0,5,0,0" />
+                                        Margin="0,5,0,0">
+                                    <Button.Behaviors>
+                                        <toolkit:EventToCommandBehavior
+                                                EventName="Clicked"
+                                                Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.RecordPlayButtonClickCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Button.Behaviors>
+                                </Button>
                             </VerticalStackLayout>
                         </Border>
                     </DataTemplate>

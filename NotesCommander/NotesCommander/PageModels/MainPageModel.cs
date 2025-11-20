@@ -56,6 +56,18 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [ObservableProperty]
         private string draftCategoryLabel = "Входящие";
 
+        [ObservableProperty]
+        private int playAudioInvokedCount;
+
+        [ObservableProperty]
+        private int playButtonClickedCount;
+
+        [ObservableProperty]
+        private string? lastPlayAudioStatus;
+
+        [ObservableProperty]
+        private string debugVmName;
+
         public ObservableCollection<string> DraftPhotoPaths { get; } = new();
 
         public string RecordingStatusText => IsRecording ? "Идёт запись" : "Ожидание записи";
@@ -68,6 +80,21 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
         public bool HasDraftPhotos => DraftPhotoPaths.Count > 0;
 
+        public string PlayCommandStatus
+        {
+                get
+                {
+                        var cmd = PlayAudioCommand;
+                        if (cmd is null)
+                                return "PlayAudioCommand=null";
+
+                        if (cmd is IAsyncRelayCommand<VoiceNote> asyncCmd)
+                                return $"PlayAudioCommand ok (CanExecute={asyncCmd.CanExecute(null)})";
+
+                        return $"PlayAudioCommand type: {cmd.GetType().Name}";
+                }
+        }
+
         public MainPageModel(IVoiceNoteService voiceNoteService, IErrorHandler errorHandler, IServiceProvider serviceProvider, NoteSyncService noteSyncService, SeedDataService seedDataService, IAudioPlaybackService audioPlaybackService)
         {
                 _voiceNoteService = voiceNoteService;
@@ -78,9 +105,20 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 _audioPlaybackService = audioPlaybackService;
 
                 DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
+                DebugVmName = GetType().Name;
 
                 _recordingTimer.AutoReset = true;
                 _recordingTimer.Elapsed += (_, _) => UpdateRecordingDuration();
+        }
+
+        [RelayCommand]
+        private void RecordPlayButtonClick(VoiceNote? noteFromButton)
+        {
+                PlayButtonClickedCount++;
+                var title = noteFromButton is null || string.IsNullOrWhiteSpace(noteFromButton.Title)
+                        ? "(null)"
+                        : noteFromButton.Title;
+                LastPlayAudioStatus = $"Clicked event: {title} @ {DateTime.Now:T}";
         }
 
         [RelayCommand]
@@ -152,12 +190,24 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 try
                 {
-                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Starting playback for note: {note.Title}");
+                        if (note is null)
+                        {
+                                LastPlayAudioStatus = "Parameter note is null";
+                                await AppShell.DisplaySnackbarAsync("Нет выбранной заметки");
+                                return;
+                        }
+
+                        PlayAudioInvokedCount++;
+                        var title = string.IsNullOrWhiteSpace(note.Title) ? "(без названия)" : note.Title;
+                        LastPlayAudioStatus = $"Clicked: {title} @ {DateTime.Now:T}";
+
+                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Starting playback for note: {title}");
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] Audio file path: {note.AudioFilePath}");
                         
                         if (string.IsNullOrEmpty(note.AudioFilePath))
                         {
                                 System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: AudioFilePath is null or empty");
+                                LastPlayAudioStatus = "File path missing";
                                 await AppShell.DisplaySnackbarAsync("Аудиофайл не указан");
                                 return;
                         }
@@ -165,6 +215,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         if (!File.Exists(note.AudioFilePath))
                         {
                                 System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: File does not exist: {note.AudioFilePath}");
+                                LastPlayAudioStatus = "File not found";
                                 await AppShell.DisplaySnackbarAsync("Аудиофайл не найден");
                                 return;
                         }
@@ -176,6 +227,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         await _audioPlaybackService.PlayAsync(note.AudioFilePath);
                         
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] Playback started successfully");
+                        LastPlayAudioStatus = $"Started: {note.Title}";
                         await AppShell.DisplayToastAsync($"▶ {note.Title}");
                 }
                 catch (Exception ex)
@@ -183,6 +235,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: {ex.Message}");
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stack trace: {ex.StackTrace}");
                         _errorHandler.HandleError(ex);
+                        LastPlayAudioStatus = $"Error: {ex.Message}";
                         await AppShell.DisplaySnackbarAsync($"Ошибка воспроизведения: {ex.Message}");
                 }
         }

@@ -1,0 +1,152 @@
+
+Проект: кроссплатформенное приложение .NET MAUI (.NET 10) для голосовых офлайн‑заметок и фотографий с бэкендом на ASP.NET (Aspire). Оно будет работать на Windows, и в перспективе — на Android и iOS. Пользователь видит список заметок, сгруппированных по дате («Сегодня», «15.03.2025» и т.д.). Каждая запись содержит аудиофайл с кнопкой воспроизведения. 
+
+## Архитектура и MVVM
+
+Приложение должно строиться по шаблону MVVM (Model‑View‑ViewModel). Это обеспечивает разделение пользовательского интерфейса и логики. ViewModel реализует `INotifyPropertyChanged`: в сеттере свойства вызывается `OnPropertyChanged`, чтобы UI обновлялся автоматическиhttps://learn.microsoft.com/en-us/dotnet/maui/xaml/fundamentals/mvvm#:~:text=x%3ADataType%3D. В XAML‑странице обычно устанавливают `BindingContext` на экземпляр ViewModel, чтобы элементы могли обращаться к свойствам VM. Для компилируемых привязок включайте атрибут `x:DataType`, который повышает производительность и позволяет ловить ошибки на этапе компиляцииhttps://learn.microsoft.com/en-us/dotnet/maui/fundamentals/data-binding/compiled-bindings#:~:text=To%20use%20compiled%20bindings%20in,location%20in%20a%20view%20hierarchy. Пример ViewModel:
+
+```
+public class NoteViewModel : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler PropertyChanged;
+    private string _text;
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            if (_text != value)
+            {
+                _text = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    protected void OnPropertyChanged([CallerMemberName] string propertyName = "") =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+```
+
+Устанавливайте `BindingContext` в XAML или в конструкторе страницы. Использование `x:DataType` внутри `DataTemplate` обязательно, чтобы компилятор правильно выводил тип привязкиhttps://learn.microsoft.com/en-us/dotnet/maui/fundamentals/data-binding/compiled-bindings#:~:text=object%20using%20the%20,from%20its%20parent%20scope:
+
+```
+<DataTemplate x:DataType="models:Note">
+    <Label Text="{Binding Title}" />
+</DataTemplate>
+```
+
+## Службы и внедрение зависимостей
+
+MAUI поддерживает Microsoft.Extensions.DependencyInjection. В методе `CreateMauiApp` регистрируйте сервисы и ViewModel. Выбирайте подходящие временные характеристики: `AddSingleton` — один экземпляр для всего приложения, `AddTransient` — новый экземпляр при каждом запросе. Shell‑приложения автоматически создают страницы и внедряют зависимости, если те зарегистрированыhttps://learn.microsoft.com/en-us/dotnet/maui/fundamentals/dependency-injection#:~:text=fonts.AddFont%28%22OpenSans. Пример регистрации:
+
+```
+var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
+builder.Services.AddSingleton<MainPageViewModel>();
+builder.Services.AddSingleton<MainPage>();
+builder.Services.AddTransient<IAudioService, AudioService>();
+builder.AddAudio(); // регистрация Plugin.Maui.Audio
+return builder.Build();
+```
+
+Плагин Plugin.Maui.Audio предоставляет интерфейсы `IAudioManager` и `IAudioPlayer` для работы с аудио. Зарегистрируйте его через `builder.AddAudio()`, чтобы сервисы внедрялись через DI.
+
+## Привязка данных и команды
+
+В XAML используйте привязки к свойствам ViewModel: `<Label Text="{Binding Text}" />`, `<CollectionView ItemsSource="{Binding Notes}" />`. Если требуется изменение данных из UI, включите `Mode=TwoWay`. Для обработки действий предпочтительнее использовать `ICommand` вместо событий. В ViewModel определяйте команды, например `PlayCommand`, и привязывайте их к кнопкам: `<Button Command="{Binding PlayCommand}" />`. Команды автоматически учитывают доступность кнопок через `CanExecute` и уведомляют о смене состоянияhttps://learn.microsoft.com/en-us/dotnet/maui/xaml/fundamentals/mvvm#:~:text=Commanding.
+
+## Отображение списков и группировка
+
+Для отображения заметок используйте `CollectionView` с `ObservableCollection<Note>`. Чтобы разгруппировать элементы по дате, сформируйте коллекцию групп: каждая группа содержит список заметок и строку‑заголовок (имя группы — дата). В XAML задайте `IsGrouped="True"` и определите `GroupHeaderTemplate`https://learn.microsoft.com/en-us/dotnet/maui/user-interface/controls/collectionview/grouping#:~:text=,the%20footer%20of%20each%20group. Пример разметки:
+
+```
+<CollectionView ItemsSource="{Binding NoteGroups}" IsGrouped="True">
+  <CollectionView.GroupHeaderTemplate>
+    <DataTemplate>
+      <Label Text="{Binding Name}" FontSize="12" FontAttributes="Bold" BackgroundColor="LightGray" />
+    </DataTemplate>
+  </CollectionView.GroupHeaderTemplate>
+  <CollectionView.ItemTemplate>
+    <DataTemplate x:DataType="models:Note">
+      <Grid Padding="5" ColumnDefinitions="Auto,*">
+        <Button Text="▶" Command="{Binding PlayCommand}" />
+        <Label Grid.Column="1" Text="{Binding Title}" VerticalOptions="Center" />
+      </Grid>
+    </DataTemplate>
+  </CollectionView.ItemTemplate>
+</CollectionView>
+```
+
+В ViewModel создайте коллекцию групп, где `Name` — строка с датой. MAUI автоматически вставит разделители групп при отображении. Если необходимо настроить нижний колонтитул группы, можно использовать `GroupFooterTemplate`https://learn.microsoft.com/en-us/dotnet/maui/user-interface/controls/collectionview/grouping#:~:text=By%20default%2C%20CollectionView%20will%20display,group%20header%20and%20group%20footer.
+
+## Навигация и Shell
+
+Рекомендуется использовать `AppShell` для навигации. Shell упрощает регистрацию маршрутов и позволяет внедрять зависимости при переходе между страницами. Не используйте одновременно `Shell` и устаревшие `NavigationPage` или `TabbedPage` — это приведёт к ошибкамhttps://learn.microsoft.com/en-us/dotnet/maui/user-interface/pages/tabbedpage#:~:text=MAUI%20Shell%20enables%20pages%20accessed,about%20Shell%20apps%2C%20see%20Shell. Назначайте `MainPage` один раз в `App` или `AppShell`, затем выполняйте переход по маршрутам.
+
+## Организация файлов
+
+Структурируйте проект, создавая папки `Views`, `ViewModels`, `Models`, `Services`. Именуйте файлы по шаблону: `MainPage.xaml` и `MainPageViewModel.cs`. Ресурсы (цвета, стили) размещайте в `App.xaml` или отдельных ресурсных словарях. При необходимости настраивать элементы используйте хэндлеры (`ConfigureMauiHandlers`) вместо устаревших рендереров — это обеспечивает лучшую производительность и кроссплатформенностьhttps://learn.microsoft.com/en-us/dotnet/maui/migration/renderer-to-handler#:~:text=concept%20called%20a%20handler.
+
+## Избегание ошибок
+
+- **Прокрутка**: не размещайте прокручиваемые элементы (`CollectionView`, `ScrollView`) внутри `StackLayout` без ограниченной высоты. Это нарушает виртуализацию и прокрутку. Вместо этого используйте `Grid` или задайте высоту явноhttps://learn.microsoft.com/en-us/dotnet/maui/user-interface/controls/collectionview/scrolling#:~:text=Placing%20a%20CollectionView%20%20inside,155%20with%20a%20Grid.
+- **Жесты**: при наличии вложенных элементов с `GestureRecognizer` используйте свойство `InputTransparent="True"`, чтобы передать события нижележащему элементу и избежать конфликтовhttps://learn.microsoft.com/en-us/dotnet/api/microsoft.maui.controls.visualelement.inputtransparent#:~:text=Setting%20InputTransparent%20to%20,behind%20the%20input%20transparent%20element.
+- **Изображения**: MAUI автоматически конвертирует SVG в PNG. При ссылке на SVG‑изображения в XAML указывайте расширение `.png`https://learn.microsoft.com/en-us/dotnet/maui/user-interface/controls/image#:~:text=,with%20a%20.png%20extension. Для сложных векторных изображений можно использовать SkiaSharp.
+- **Shell и Page**: не смешивайте Shell и TabbedPage/NavigationPage — это приведёт к исключениямhttps://learn.microsoft.com/en-us/dotnet/maui/user-interface/pages/tabbedpage#:~:text=MAUI%20Shell%20enables%20pages%20accessed,about%20Shell%20apps%2C%20see%20Shell.
+- **Стили привязок**: не забывайте указывать `x:DataType` в `DataTemplate`, иначе компилятор может использовать неправильный тип, что приведёт к ошибкам или снижению производительностиhttps://learn.microsoft.com/en-us/dotnet/maui/fundamentals/data-binding/compiled-bindings#:~:text=object%20using%20the%20,from%20its%20parent%20scope.
+- **Команды в DataTemplate**: если кнопка должна вызывать команду, которая живёт на странице/VM, используйте `x:Reference` на страницу: `Command="{Binding Source={x:Reference MainPage}, Path=BindingContext.PlayAudioCommand}"`. `RelativeSource` не работает для `EventToCommandBehavior`, он не наследует `Element`, поэтому BindingContext задаётся через `Source` или код‑бихайнд. При сложных случаях (например, WinUI не отдаёт событие) допускается обрабатывать `Clicked` в code‑behind и явно вызвать `Command.Execute`.
+
+## Мини‑примеры
+
+- **Регистрация сервисов**:
+
+```
+var builder = MauiApp.CreateBuilder().UseMauiApp<App>();
+builder.Services.AddTransient<IAudioService, AudioService>();
+builder.Services.AddSingleton<MainPageViewModel>();
+builder.Services.AddSingleton<MainPage>();
+builder.AddAudio();
+var app = builder.Build();
+```
+
+- **Связывание данных в XAML**:
+
+```xml
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MyApp.Views.MainPage">
+    <ContentPage.BindingContext>
+        <viewModels:MainPageViewModel />
+    </ContentPage.BindingContext>
+    <StackLayout>
+        <Label Text="{Binding NoteText}" />
+        <Button Text="Save" Command="{Binding SaveCommand}" />
+    </StackLayout>
+</ContentPage>
+```
+
+- **Команда в ViewModel**:
+
+```
+public ICommand SaveCommand { get; }
+public NotesViewModel()
+{
+    SaveCommand = new Command(ExecuteSave);
+}
+private void ExecuteSave()
+{
+    // Логика сохранения заметки
+}
+```
+
+## Чек‑лист для генератора кода (Copilot)
+
+1. Использовать MVVM: ViewModel реализует `INotifyPropertyChanged`, устанавливать `BindingContext` и `x:DataType`.
+2. Регистрировать сервисы и ViewModel через DI в `CreateMauiApp`, включая `AddAudio` для плагина аудио.
+3. Применять двусторонние привязки и команды (`ICommand`), избегая использования `Clicked` в XAML.
+4. Строить коллекцию групп для списка заметок; использовать `CollectionView` с `IsGrouped="True"`.
+5. Навигацию реализовывать через Shell; не смешивать с `TabbedPage` и `NavigationPage`.
+6. Соблюдать структуру проекта: папки `Views`, `ViewModels`, `Models`, `Services`.
+7. Изображения SVG подключать как PNG; избегать вложенных scroll‑элементов; использовать `InputTransparent` при сложных жестах.
+8. При необходимости настройки платформенных элементов применять хэндлеры, а не рендереры.
+
+Следуйте этим рекомендациям и регулярно проверяйте официальную документацию Microsoft (MS Learn) для актуальных примеров и обновлений.
