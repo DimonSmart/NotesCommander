@@ -462,6 +462,9 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
         private async Task InitializeSeedDataIfNeeded()
         {
+                // Ensure demo assets exist even if the database was already seeded (repairs empty seed files).
+                await _seedDataService.EnsureSeedAssetsAsync();
+
                 var isSeeded = Preferences.Default.Get("is_seeded", false);
                 var existingNotes = await _voiceNoteService.GetNotesAsync();
                 if (!isSeeded || existingNotes.Count == 0)
@@ -559,11 +562,14 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         Directory.CreateDirectory(directory);
                 }
 
-                if (!File.Exists(destination))
+                var destinationInfo = new FileInfo(destination);
+                if (!destinationInfo.Exists || destinationInfo.Length == 0)
                 {
                         await using var sourceStream = await FileSystem.OpenAppPackageFileAsync(resourcePath);
                         await using var destinationStream = File.Create(destination);
                         await sourceStream.CopyToAsync(destinationStream);
+                        destinationInfo.Refresh();
+                        System.Diagnostics.Debug.WriteLine($"[EnsureSampleAudioAssetAsync] Copied '{resourcePath}' to '{destination}' (size={destinationInfo.Length})");
                 }
 
                 return destination;

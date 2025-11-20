@@ -20,6 +20,13 @@ public class SeedDataService
                 _logger = logger;
         }
 
+        public async Task<(string AudioPath, string PhotoPath)> EnsureSeedAssetsAsync()
+        {
+                var audioPath = await EnsureSeedFileAsync("SeedFiles/audio/demo-note.wav", "demo-note.wav");
+                var photoPath = await EnsureSeedFileAsync("SeedFiles/photos/demo-photo.png", "demo-photo.png");
+                return (audioPath, photoPath);
+        }
+
         public async Task LoadSeedDataAsync()
         {
                 _logger.LogInformation("Starting seed data loading...");
@@ -53,8 +60,7 @@ public class SeedDataService
                 _logger.LogInformation("Tags created: {Count}", tags.Length);
 
                 // Создаём демонстрационную заметку
-                var audioPath = await EnsureSeedFileAsync("SeedFiles/audio/demo-note.wav");
-                var photoPath = await EnsureSeedFileAsync("SeedFiles/photos/demo-photo.png");
+                var (audioPath, photoPath) = await EnsureSeedAssetsAsync();
 
                 _logger.LogInformation("Audio file path: {AudioPath}", audioPath);
                 _logger.LogInformation("Photo file path: {PhotoPath}", photoPath);
@@ -99,14 +105,17 @@ public class SeedDataService
                 _logger.LogInformation("Tables cleared successfully");
         }
 
-        private async Task<string> EnsureSeedFileAsync(string fileName)
+        private async Task<string> EnsureSeedFileAsync(string fileName, string? destinationFileName = null)
         {
                 if (string.IsNullOrWhiteSpace(fileName))
                 {
                         return string.Empty;
                 }
 
-                var sanitizedName = fileName.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+                var sanitizedName = (destinationFileName ?? fileName)
+                        .Replace('\\', Path.DirectorySeparatorChar)
+                        .Replace('/', Path.DirectorySeparatorChar);
+
                 var destination = Path.Combine(FileSystem.AppDataDirectory, sanitizedName);
                 var directory = Path.GetDirectoryName(destination);
                 if (!string.IsNullOrEmpty(directory))
@@ -114,22 +123,27 @@ public class SeedDataService
                         Directory.CreateDirectory(directory);
                 }
 
-                // Копируем файл из Resources/Raw если он ещё не скопирован
-                if (!File.Exists(destination))
+                try
                 {
-                        try
+                        var destinationInfo = new FileInfo(destination);
+                        if (!destinationInfo.Exists || destinationInfo.Length == 0)
                         {
                                 await using var sourceStream = await FileSystem.OpenAppPackageFileAsync(fileName);
                                 await using var destinationStream = File.Create(destination);
                                 await sourceStream.CopyToAsync(destinationStream);
+                                destinationInfo.Refresh();
                                 _logger.LogInformation("Copied seed file from {Source} to {Destination}", fileName, destination);
                         }
-                        catch (Exception ex)
+                        else
                         {
-                                _logger.LogWarning(ex, "Could not copy seed file {FileName}, file may not exist in Resources", fileName);
-                                // Если файл не существует в ресурсах (например, demo-photo.png не добавлен), возвращаем пустую строку
-                                return string.Empty;
+                                _logger.LogDebug("Seed file already exists at {Destination} (size={Size})", destination, destinationInfo.Length);
                         }
+                }
+                catch (Exception ex)
+                {
+                        _logger.LogWarning(ex, "Could not copy seed file {FileName}, file may not exist in Resources", fileName);
+                        // If the asset is missing in the package we skip seeding but keep the app running.
+                        return string.Empty;
                 }
 
                 return destination;
