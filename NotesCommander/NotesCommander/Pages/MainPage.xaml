@@ -51,7 +51,7 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
         <VerticalStackLayout Grid.Row="0" Padding="12" BackgroundColor="LightYellow">
             <Label Text="=== ОТЛАДКА ===" FontSize="14" TextColor="Red" FontAttributes="Bold" />
             <Label Text="{Binding GroupedVoiceNotes.Count, StringFormat='GroupedVoiceNotes.Count={0}'}" FontSize="12" TextColor="Black" />
@@ -118,5 +118,25 @@
                     Command="{Binding AddVoiceNoteCommand}"
                     SemanticProperties.Description="Добавить голосовую заметку" />
         </Grid>
+
+        <Border Grid.Row="2"
+                Padding="12"
+                StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light=#F5F5F5, Dark=#1F1F1F}">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                    <Label Text="{Binding InternetStatusText}"
+                           FontSize="12"
+                           TextColor="{Binding InternetStatusColor}"
+                           FontAttributes="Bold" />
+                </HorizontalStackLayout>
+                <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center" HorizontalOptions="End">
+                    <Label Text="{Binding BackendStatusText}"
+                           FontSize="12"
+                           TextColor="{Binding BackendStatusColor}"
+                           FontAttributes="Bold" />
+                </HorizontalStackLayout>
+            </Grid>
+        </Border>
     </Grid>
 </ContentPage>

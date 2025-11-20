@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using Timer = System.Timers.Timer;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,7 +11,9 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
+using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Media;
+using Microsoft.Maui.Networking;
 using Microsoft.Maui.Storage;
 using NotesCommander.Models;
 using NotesCommander.Pages;
@@ -24,6 +29,8 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private readonly IAudioPlaybackService _audioPlaybackService;
         private readonly SeedDataService _seedDataService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly CancellationTokenSource _statusMonitorCts = new();
         private readonly Timer _recordingTimer = new(1000);
         private VoiceNote? _currentlyPlayingNote;
         private bool _isNavigatedTo;
@@ -69,6 +76,16 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [ObservableProperty]
         private string debugVmName;
 
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(InternetStatusText))]
+        [NotifyPropertyChangedFor(nameof(InternetStatusColor))]
+        private bool hasInternetAccess;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(BackendStatusText))]
+        [NotifyPropertyChangedFor(nameof(BackendStatusColor))]
+        private bool hasBackendConnection;
+
         public ObservableCollection<string> DraftPhotoPaths { get; } = new();
 
         public string RecordingStatusText => IsRecording ? "Идёт запись" : "Ожидание записи";
@@ -96,7 +113,22 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 }
         }
 
-        public MainPageModel(IVoiceNoteService voiceNoteService, IErrorHandler errorHandler, IServiceProvider serviceProvider, NoteSyncService noteSyncService, SeedDataService seedDataService, IAudioPlaybackService audioPlaybackService)
+        public string InternetStatusText => HasInternetAccess ? "🌐 Интернет" : "🌐 Нет сети";
+
+        public Color InternetStatusColor => HasInternetAccess ? Colors.ForestGreen : Colors.Gray;
+
+        public string BackendStatusText => HasBackendConnection ? "🗄️ Backend" : "🗄️ Нет связи с сервером";
+
+        public Color BackendStatusColor => HasBackendConnection ? Colors.Teal : Colors.Gray;
+
+        public MainPageModel(
+                IVoiceNoteService voiceNoteService,
+                IErrorHandler errorHandler,
+                IServiceProvider serviceProvider,
+                NoteSyncService noteSyncService,
+                SeedDataService seedDataService,
+                IAudioPlaybackService audioPlaybackService,
+                IHttpClientFactory httpClientFactory)
         {
                 _voiceNoteService = voiceNoteService;
                 _errorHandler = errorHandler;
@@ -104,6 +136,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 _noteSyncService = noteSyncService;
                 _seedDataService = seedDataService;
                 _audioPlaybackService = audioPlaybackService;
+                _httpClientFactory = httpClientFactory;
                 _audioPlaybackService.PlaybackEnded += HandlePlaybackEnded;
 
                 DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
@@ -111,6 +144,10 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
                 _recordingTimer.AutoReset = true;
                 _recordingTimer.Elapsed += (_, _) => UpdateRecordingDuration();
+
+                HasInternetAccess = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+                Connectivity.Current.ConnectivityChanged += HandleConnectivityChanged;
+                _ = MonitorBackendStatusAsync(_statusMonitorCts.Token);
         }
 
         [RelayCommand]
@@ -456,6 +493,9 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 _recordingTimer.Stop();
                 _recordingTimer.Dispose();
                 _audioPlaybackService.PlaybackEnded -= HandlePlaybackEnded;
+                Connectivity.Current.ConnectivityChanged -= HandleConnectivityChanged;
+                _statusMonitorCts.Cancel();
+                _statusMonitorCts.Dispose();
                 StopCurrentPlayback();
         }
 
@@ -633,6 +673,80 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 var fileName = $"voice-note-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.m4a";
                 return Path.Combine(FileSystem.AppDataDirectory, fileName);
+        }
+
+        private async Task MonitorBackendStatusAsync(CancellationToken cancellationToken)
+        {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                        try
+                        {
+                                await RefreshBackendStatusAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                                break;
+                        }
+                        catch (Exception ex)
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[BackendStatus] ERROR: {ex.Message}");
+                                HasBackendConnection = false;
+                        }
+
+                        try
+                        {
+                                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                                break;
+                        }
+                }
+        }
+
+        private async Task RefreshBackendStatusAsync(CancellationToken cancellationToken)
+        {
+                if (!HasInternetAccess)
+                {
+                        HasBackendConnection = false;
+                        return;
+                }
+
+                var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                linkedCts.CancelAfter(TimeSpan.FromSeconds(3));
+
+                try
+                {
+                        var client = _httpClientFactory.CreateClient(NoteSyncService.HttpClientName);
+                        var response = await client.GetAsync("alive", linkedCts.Token).ConfigureAwait(false);
+                        HasBackendConnection = response.IsSuccessStatusCode;
+                }
+                catch (OperationCanceledException)
+                {
+                        HasBackendConnection = false;
+                }
+                catch (Exception ex)
+                {
+                        System.Diagnostics.Debug.WriteLine($"[BackendStatus] ERROR: {ex.Message}");
+                        HasBackendConnection = false;
+                }
+                finally
+                {
+                        linkedCts.Dispose();
+                }
+        }
+
+        private void HandleConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
+        {
+                HasInternetAccess = e.NetworkAccess == NetworkAccess.Internet;
+                if (HasInternetAccess)
+                {
+                        _ = RefreshBackendStatusAsync(_statusMonitorCts.Token);
+                }
+                else
+                {
+                        HasBackendConnection = false;
+                }
         }
 
 }
