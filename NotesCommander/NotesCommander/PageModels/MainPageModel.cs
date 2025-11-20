@@ -25,6 +25,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private readonly SeedDataService _seedDataService;
         private readonly IServiceProvider _serviceProvider;
         private readonly Timer _recordingTimer = new(1000);
+        private VoiceNote? _currentlyPlayingNote;
         private bool _isNavigatedTo;
         private bool _dataLoaded;
         private DateTimeOffset? _recordingStartedAt;
@@ -103,6 +104,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 _noteSyncService = noteSyncService;
                 _seedDataService = seedDataService;
                 _audioPlaybackService = audioPlaybackService;
+                _audioPlaybackService.PlaybackEnded += HandlePlaybackEnded;
 
                 DraftPhotoPaths.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasDraftPhotos));
                 DebugVmName = GetType().Name;
@@ -185,6 +187,8 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 await Shell.Current.Navigation.PushModalAsync(detailPage);
         }
 
+        
+        
         [RelayCommand]
         private async Task PlayAudio(VoiceNote note)
         {
@@ -193,12 +197,28 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         if (note is null)
                         {
                                 LastPlayAudioStatus = "Parameter note is null";
-                                await AppShell.DisplaySnackbarAsync("Нет выбранной заметки");
+                                await AppShell.DisplaySnackbarAsync("Cannot play this note");
                                 return;
                         }
 
                         PlayAudioInvokedCount++;
-                        var title = string.IsNullOrWhiteSpace(note.Title) ? "(без названия)" : note.Title;
+                        var title = string.IsNullOrWhiteSpace(note.Title) ? "(Untitled)" : note.Title;
+                        var switchingFromOtherNote = _currentlyPlayingNote is not null && !IsNoteCurrentlyPlaying(note);
+
+                        if (IsNoteCurrentlyPlaying(note))
+                        {
+                                System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stopping playback for note: {title}");
+                                StopCurrentPlayback();
+                                LastPlayAudioStatus = $"Stopped: {title}";
+                                return;
+                        }
+
+                        if (switchingFromOtherNote)
+                        {
+                                System.Diagnostics.Debug.WriteLine("[PlayAudio] Switching to another note, stopping the current one first");
+                                StopCurrentPlayback();
+                        }
+
                         LastPlayAudioStatus = $"Clicked: {title} @ {DateTime.Now:T}";
 
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] Starting playback for note: {title}");
@@ -206,9 +226,9 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         
                         if (string.IsNullOrEmpty(note.AudioFilePath))
                         {
-                                System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: AudioFilePath is null or empty");
+                                System.Diagnostics.Debug.WriteLine("[PlayAudio] ERROR: AudioFilePath is null or empty");
                                 LastPlayAudioStatus = "File path missing";
-                                await AppShell.DisplaySnackbarAsync("Аудиофайл не указан");
+                                await AppShell.DisplaySnackbarAsync("Missing audio file path");
                                 return;
                         }
                         
@@ -216,19 +236,22 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         {
                                 System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: File does not exist: {note.AudioFilePath}");
                                 LastPlayAudioStatus = "File not found";
-                                await AppShell.DisplaySnackbarAsync("Аудиофайл не найден");
+                                await AppShell.DisplaySnackbarAsync("Audio file not found");
                                 return;
                         }
                         
                         var fileInfo = new FileInfo(note.AudioFilePath);
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] File size: {fileInfo.Length} bytes");
 
-                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Calling audio playback service...");
+                        StopCurrentPlayback();
+
+                        System.Diagnostics.Debug.WriteLine("[PlayAudio] Calling audio playback service...");
                         await _audioPlaybackService.PlayAsync(note.AudioFilePath);
+                        SetCurrentPlayingNote(note);
                         
-                        System.Diagnostics.Debug.WriteLine($"[PlayAudio] Playback started successfully");
+                        System.Diagnostics.Debug.WriteLine("[PlayAudio] Playback started successfully");
                         LastPlayAudioStatus = $"Started: {note.Title}";
-                        await AppShell.DisplayToastAsync($"▶ {note.Title}");
+                        await AppShell.DisplayToastAsync($"Playing: {note.Title}");
                 }
                 catch (Exception ex)
                 {
@@ -236,8 +259,76 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stack trace: {ex.StackTrace}");
                         _errorHandler.HandleError(ex);
                         LastPlayAudioStatus = $"Error: {ex.Message}";
-                        await AppShell.DisplaySnackbarAsync($"Ошибка воспроизведения: {ex.Message}");
+                        await AppShell.DisplaySnackbarAsync($"Playback error: {ex.Message}");
+                        StopCurrentPlayback();
                 }
+        }
+
+        private bool IsNoteCurrentlyPlaying(VoiceNote note)
+        {
+                if (_currentlyPlayingNote is null || note is null)
+                {
+                        return false;
+                }
+
+                if (ReferenceEquals(_currentlyPlayingNote, note))
+                {
+                        return true;
+                }
+
+                if (_currentlyPlayingNote.LocalId != 0 && _currentlyPlayingNote.LocalId == note.LocalId)
+                {
+                        return true;
+                }
+
+                return false;
+        }
+
+        private void SetCurrentPlayingNote(VoiceNote note)
+        {
+                if (_currentlyPlayingNote is not null && _currentlyPlayingNote != note)
+                {
+                        _currentlyPlayingNote.IsPlaying = false;
+                }
+
+                _currentlyPlayingNote = note;
+                _currentlyPlayingNote.IsPlaying = true;
+        }
+
+        private void StopCurrentPlayback()
+        {
+                _audioPlaybackService.Stop();
+
+                if (_currentlyPlayingNote is not null)
+                {
+                        _currentlyPlayingNote.IsPlaying = false;
+                        _currentlyPlayingNote = null;
+                }
+        }
+
+        private void HandlePlaybackEnded(object? sender, PlaybackEndedEventArgs e)
+        {
+                var finishedPath = e.FilePath;
+
+                if (_currentlyPlayingNote is null)
+                {
+                        return;
+                }
+
+                if (!string.IsNullOrEmpty(finishedPath)
+                    && !string.Equals(_currentlyPlayingNote.AudioFilePath, finishedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                        return;
+                }
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                        if (_currentlyPlayingNote is not null)
+                        {
+                                _currentlyPlayingNote.IsPlaying = false;
+                                _currentlyPlayingNote = null;
+                        }
+                });
         }
 
         [RelayCommand]
@@ -365,7 +456,8 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 _recordingTimer.Stop();
                 _recordingTimer.Dispose();
-                _audioPlaybackService.Stop();
+                _audioPlaybackService.PlaybackEnded -= HandlePlaybackEnded;
+                StopCurrentPlayback();
         }
 
         private async Task InitializeSeedDataIfNeeded()

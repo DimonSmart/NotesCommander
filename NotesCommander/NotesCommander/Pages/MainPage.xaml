@@ -4,10 +4,11 @@
              xmlns:pageModels="clr-namespace:NotesCommander.PageModels"
              xmlns:models="clr-namespace:NotesCommander.Models"
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:fonts="clr-namespace:Fonts"
              x:Class="NotesCommander.Pages.MainPage"
              x:DataType="pageModels:MainPageModel"
              x:Name="OverviewPage"
-             Title="Голосовые заметки">
+             Title="Notes">
 
     <ContentPage.Behaviors>
         <toolkit:EventToCommandBehavior
@@ -27,6 +28,26 @@
     <ContentPage.Resources>
         <ResourceDictionary>
             <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+
+            <Style x:Key="PlayStopIconButtonStyle" TargetType="Button">
+                <Setter Property="WidthRequest" Value="44" />
+                <Setter Property="HeightRequest" Value="44" />
+                <Setter Property="CornerRadius" Value="22" />
+                <Setter Property="BackgroundColor" Value="#2E7D32" />
+                <Setter Property="TextColor" Value="White" />
+                <Setter Property="FontFamily" Value="{x:Static fonts:FluentUI.FontFamily}" />
+                <Setter Property="FontSize" Value="18" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Text" Value="{x:Static fonts:FluentUI.play_20_regular}" />
+                <Setter Property="SemanticProperties.Description" Value="Play voice note" />
+                <Style.Triggers>
+                    <DataTrigger TargetType="Button" Binding="{Binding IsPlaying}" Value="True">
+                        <Setter Property="Text" Value="{x:Static fonts:FluentUI.stop_20_regular}" />
+                        <Setter Property="BackgroundColor" Value="#C62828" />
+                        <Setter Property="SemanticProperties.Description" Value="Stop voice note" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -54,6 +75,7 @@
 
                         <VerticalStackLayout Spacing="8"
                                              BindableLayout.ItemsSource="{Binding DebugVoiceNotes}">
+                            
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="models:VoiceNote">
                                     <Border BackgroundColor="#FFFFFF"
@@ -61,31 +83,20 @@
                                             StrokeThickness="1"
                                             Padding="12"
                                             Margin="0,0,0,8">
-                                        <VerticalStackLayout>
-                                            <Label Text="{Binding Title}"
-                                                   FontAttributes="Bold"
-                                                   FontSize="16" />
-                                            <Label Text="{Binding DurationDisplay, StringFormat='Длительность: {0}'}"
-                                                   FontSize="12" />
-                                            <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Статус: {0}'}"
-                                                   FontSize="12" />
-                                            <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}"
-                                                   FontSize="10" />
-                                            <Button Text="▶ Воспроизвести"
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                            <Button Style="{StaticResource PlayStopIconButtonStyle}"
                                                     Clicked="OnPlayButtonClicked"
-                                                    Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.PlayAudioCommand}"
-                                                    CommandParameter="{Binding .}"
-                                                    BackgroundColor="#4CAF50"
-                                                    TextColor="White"
-                                                    Margin="0,6,0,0">
-                                                <Button.Behaviors>
-                                                    <toolkit:EventToCommandBehavior
-                                                            EventName="Clicked"
-                                                            Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.RecordPlayButtonClickCommand}"
-                                                            CommandParameter="{Binding .}" />
-                                                </Button.Behaviors>
-                                            </Button>
-                                        </VerticalStackLayout>
+                                                    VerticalOptions="Start" />
+
+                                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                                <Label Text="{Binding Title}"
+                                                       FontAttributes="Bold"
+                                                       FontSize="16" />
+                                                <Label Text="{Binding DurationDisplay, StringFormat='Duration: {0}'}" FontSize="12" />
+                                                <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Status: {0}'}" FontSize="12" />
+                                                <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
+                                            </VerticalStackLayout>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </BindableLayout.ItemTemplate>
@@ -109,29 +120,22 @@
                     </DataTemplate>
                 </CollectionView.GroupHeaderTemplate>
 
+                
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:VoiceNote">
                         <Border BackgroundColor="White" Padding="12" Margin="0,0,0,8" Stroke="#EEEEEE" StrokeThickness="1" >
-                            <VerticalStackLayout>
-                                <Label Text="{Binding Title}" FontAttributes="Bold" />
-                                <Label Text="{Binding DurationDisplay, StringFormat='Длительность: {0}'}" FontSize="12" />
-                                <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Статус: {0}'}" FontSize="12" />
-                                <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
-                                <Button Text="▶ Воспроизвести"
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Button Style="{StaticResource PlayStopIconButtonStyle}"
                                         Clicked="OnPlayButtonClicked"
-                                        Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.PlayAudioCommand}"
-                                        CommandParameter="{Binding .}"
-                                        BackgroundColor="Green"
-                                        TextColor="White"
-                                        Margin="0,5,0,0">
-                                    <Button.Behaviors>
-                                        <toolkit:EventToCommandBehavior
-                                                EventName="Clicked"
-                                                Command="{Binding Source={x:Reference OverviewPage}, Path=BindingContext.RecordPlayButtonClickCommand}"
-                                                CommandParameter="{Binding .}" />
-                                    </Button.Behaviors>
-                                </Button>
-                            </VerticalStackLayout>
+                                        VerticalOptions="Start" />
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                    <Label Text="{Binding DurationDisplay, StringFormat='Duration: {0}'}" FontSize="12" />
+                                    <Label Text="{Binding RecognitionStatusDisplay, StringFormat='Status: {0}'}" FontSize="12" />
+                                    <Label Text="{Binding AudioFilePath, StringFormat='Audio: {0}'}" FontSize="10" />
+                                </VerticalStackLayout>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

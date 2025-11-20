@@ -4,6 +4,8 @@ namespace NotesCommander.Services;
 
 public interface IAudioPlaybackService
 {
+        event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
+        string? CurrentFilePath { get; }
         Task PlayAsync(string filePath);
         void Stop();
 }
@@ -13,6 +15,10 @@ public class AudioPlaybackService : IAudioPlaybackService
         private readonly IAudioManager _audioManager;
         private IAudioPlayer? _currentPlayer;
         private Stream? _currentStream;
+
+        public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
+
+        public string? CurrentFilePath { get; private set; }
 
         public AudioPlaybackService(IAudioManager audioManager)
         {
@@ -38,6 +44,8 @@ public class AudioPlaybackService : IAudioPlaybackService
                         
                         System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Creating player...");
                         _currentPlayer = _audioManager.CreatePlayer(_currentStream);
+                        _currentPlayer.PlaybackEnded += HandlePlaybackEnded;
+                        CurrentFilePath = filePath;
                         
                         System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Starting playback...");
                         _currentPlayer.Play();
@@ -56,6 +64,7 @@ public class AudioPlaybackService : IAudioPlaybackService
         {
                 if (_currentPlayer is null)
                 {
+                        CurrentFilePath = null;
                         return;
                 }
 
@@ -65,10 +74,38 @@ public class AudioPlaybackService : IAudioPlaybackService
                 }
                 finally
                 {
-                        _currentPlayer.Dispose();
-                        _currentPlayer = null;
-                        _currentStream?.Dispose();
-                        _currentStream = null;
+                        CleanupPlayer();
                 }
         }
+
+        private void HandlePlaybackEnded(object? sender, EventArgs e)
+        {
+                var finishedPath = CurrentFilePath;
+                CleanupPlayer();
+                PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(finishedPath));
+        }
+
+        private void CleanupPlayer()
+        {
+                if (_currentPlayer is not null)
+                {
+                        _currentPlayer.PlaybackEnded -= HandlePlaybackEnded;
+                        _currentPlayer.Dispose();
+                        _currentPlayer = null;
+                }
+
+                _currentStream?.Dispose();
+                _currentStream = null;
+                CurrentFilePath = null;
+        }
+}
+
+public class PlaybackEndedEventArgs : EventArgs
+{
+        public PlaybackEndedEventArgs(string? filePath)
+        {
+                FilePath = filePath;
+        }
+
+        public string? FilePath { get; }
 }

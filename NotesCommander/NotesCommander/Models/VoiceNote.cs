@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace NotesCommander.Models;
 
@@ -19,7 +21,7 @@ public enum VoiceNoteSyncStatus
         Failed
 }
 
-public class VoiceNote
+public class VoiceNote : INotifyPropertyChanged
 {
         public int LocalId { get; set; }
 
@@ -54,6 +56,8 @@ public class VoiceNote
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        private bool isPlaying;
+
         public string DurationDisplay => Duration == TimeSpan.Zero
                 ? "00:00"
                 : Duration.ToString("mm\\:ss");
@@ -83,6 +87,29 @@ public class VoiceNote
                                 _ => "📝"
                         };
                 }
+        }
+
+        public bool IsPlaying
+        {
+                get => isPlaying;
+                set => SetProperty(ref isPlaying, value);
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+                => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+        {
+                if (EqualityComparer<T>.Default.Equals(storage, value))
+                {
+                        return false;
+                }
+
+                storage = value;
+                OnPropertyChanged(propertyName);
+                return true;
         }
 }
 
