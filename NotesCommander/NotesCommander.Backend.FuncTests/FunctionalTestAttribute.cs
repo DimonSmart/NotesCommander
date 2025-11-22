@@ -1,7 +1,7 @@
 using Xunit;
 using Xunit.Sdk;
 
-namespace NotesCommander.Backend.Tests;
+namespace NotesCommander.Backend.FuncTests;
 
 /// <summary>
 /// Marks a test as a functional test that requires external dependencies (Docker, network, etc.)
@@ -13,4 +13,3 @@ namespace NotesCommander.Backend.Tests;
 public sealed class FunctionalTestAttribute : FactAttribute
 {
 }
-

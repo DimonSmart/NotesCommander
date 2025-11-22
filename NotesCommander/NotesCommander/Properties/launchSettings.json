@@ -2,6 +2,9 @@
   "profiles": {
     "Windows Machine": {
       "commandName": "Project",
+      "environmentVariables": {
+        "Backend__BaseUrl": "http://localhost:62743"
+      },
       "nativeDebugging": false
     }
   }

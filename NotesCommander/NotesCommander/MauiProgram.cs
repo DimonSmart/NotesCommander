@@ -1,4 +1,5 @@
 using CommunityToolkit.Maui;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NotesCommander.MauiServiceDefaults;
 using NotesCommander.Pages;
@@ -10,10 +11,18 @@ namespace NotesCommander;
 
 public static class MauiProgram
 {
-    public static IServiceProvider Resvices { get; private set; }
+    public static IServiceProvider Resvices { get; private set; } = default!;
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
+
+        // Load optional configuration files + environment variables so Backend:BaseUrl can be overridden at debug time
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+        builder.Configuration
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables();
+
         builder
             .UseMauiApp<App>()
             .UseMauiCommunityToolkit(options =>

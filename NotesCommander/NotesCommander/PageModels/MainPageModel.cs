@@ -106,14 +106,11 @@ public partial class MainPageModel : ObservableObject, IDisposable
         {
                 get
                 {
-                        var cmd = PlayAudioCommand;
+                        var cmd = GroupedVoiceNotes.SelectMany(g => g).FirstOrDefault()?.PlayAudioCommand;
                         if (cmd is null)
                                 return "PlayAudioCommand=null";
 
-                        if (cmd is IAsyncRelayCommand<VoiceNoteViewModel> asyncCmd)
-                                return $"PlayAudioCommand ok (CanExecute={asyncCmd.CanExecute(null)})";
-
-                        return $"PlayAudioCommand type: {cmd.GetType().Name}";
+                        return $"PlayAudioCommand ok (CanExecute={cmd.CanExecute(null)})";
                 }
         }
 

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Options;
 using NotesCommander.Backend.Models;
 using NotesCommander.Backend.Storage;
 
-namespace NotesCommander.Backend.Tests.Storage;
+namespace NotesCommander.Backend.FuncTests.Storage;
 
 public sealed class NoteStoreTests
 {

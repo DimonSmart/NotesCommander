@@ -6,7 +6,7 @@ using NotesCommander.Backend.Services;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NotesCommander.Backend.Tests.Services;
+namespace NotesCommander.Backend.FuncTests.Services;
 
 /// <summary>
 /// Functional tests for Whisper speech recognition integration.
@@ -149,4 +149,3 @@ public sealed class WhisperIntegrationTests : IAsyncLifetime
         });
     }
 }
-

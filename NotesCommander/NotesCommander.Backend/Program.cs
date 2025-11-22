@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
 using NotesCommander.Backend.Extensions;
 using NotesCommander.Backend.Models;
 using NotesCommander.Backend.Services;

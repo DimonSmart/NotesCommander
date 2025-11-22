@@ -26,6 +26,7 @@ public sealed class NoteSyncService : IAsyncDisposable
         private readonly Task _pollingWorker;
         private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
         private readonly string _fallbackBackendUrl;
+        private readonly bool _disabled;
 
         public NoteSyncService(IVoiceNoteService voiceNoteService, IHttpClientFactory httpClientFactory, ILogger<NoteSyncService> logger, IConfiguration configuration)
         {
@@ -35,6 +36,19 @@ public sealed class NoteSyncService : IAsyncDisposable
                 _fallbackBackendUrl = configuration["Backend:BaseUrl"]
                         ?? configuration["NOTESCOMMANDER_BACKEND_URL"]
                         ?? "https+http://notes-backend";
+
+                // Temporary: allow disabling sync to avoid crashes while backend is unreachable.
+                // Default is disabled unless explicitly set to "false".
+                var disabledConfig = configuration["NoteSync:Disabled"] ?? configuration["DisableNoteSync"];
+                _disabled = string.IsNullOrWhiteSpace(disabledConfig) || bool.TryParse(disabledConfig, out var disabled) && disabled;
+
+                if (_disabled)
+                {
+                        _uploadWorker = Task.CompletedTask;
+                        _pollingWorker = Task.CompletedTask;
+                        _logger.LogInformation("NoteSyncService is disabled (set NoteSync:Disabled=false to enable).");
+                        return;
+                }
 
                 Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
 
@@ -46,6 +60,11 @@ public sealed class NoteSyncService : IAsyncDisposable
 
         public void TrackForUpload(VoiceNote note)
         {
+                if (_disabled)
+                {
+                        return;
+                }
+
                 if (note is null)
                 {
                         return;
@@ -62,6 +81,11 @@ public sealed class NoteSyncService : IAsyncDisposable
 
         public async ValueTask DisposeAsync()
         {
+                if (_disabled)
+                {
+                        return;
+                }
+
                 Connectivity.Current.ConnectivityChanged -= OnConnectivityChanged;
                 _cts.Cancel();
                 try
@@ -79,6 +103,11 @@ public sealed class NoteSyncService : IAsyncDisposable
 
         private async Task SeedQueueAsync()
         {
+                if (_disabled)
+                {
+                        return;
+                }
+
                 try
                 {
                         await _seedSemaphore.WaitAsync(_cts.Token);

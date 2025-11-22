@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
-namespace NotesCommander.Backend.Tests;
+namespace NotesCommander.Backend.FuncTests;
 
 /// <summary>
 /// Logger provider that writes logs to xUnit test output
@@ -64,4 +64,3 @@ public sealed class XunitLoggerProvider : ILoggerProvider
         }
     }
 }
-

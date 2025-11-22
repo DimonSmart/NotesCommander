@@ -7,7 +7,7 @@ using NotesCommander.Backend.Services;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace NotesCommander.Backend.Tests.Services;
+namespace NotesCommander.Backend.FuncTests.Services;
 
 /// <summary>
 /// Integration tests for Whisper speech recognition through Backend API.

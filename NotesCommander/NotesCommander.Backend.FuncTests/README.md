@@ -1,4 +1,4 @@
-# NotesCommander Backend Tests
+# NotesCommander Backend FuncTests
 
 This project contains functional and integration tests for the NotesCommander backend API.
 
@@ -146,7 +146,7 @@ dotnet test
 ## Структура проекта
 
 ```
-NotesCommander.Backend.Tests/
+NotesCommander.Backend.FuncTests/
 ├── Services/
 │   └── WhisperIntegrationTests.cs    # Функциональные тесты Whisper
 ├── Storage/
@@ -197,4 +197,3 @@ Error: Container did not become healthy in time
 2. **Использовать Docker-in-Docker** для CI окружений (GitHub Actions, GitLab CI и т.д.)
 
 3. **Кэшировать Docker образы** для ускорения CI builds
-

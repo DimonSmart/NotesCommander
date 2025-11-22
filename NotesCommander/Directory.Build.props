@@ -9,4 +9,16 @@
     <!-- Allow non-interactive installation of Android SDK components -->
     <AcceptAndroidSdkLicenses>true</AcceptAndroidSdkLicenses>
   </PropertyGroup>
+
+  <!-- Common solution-wide configurations -->
+  <PropertyGroup>
+    <Configurations>Debug;Release;DebugFast</Configurations>
+  </PropertyGroup>
+
+  <!-- DebugFast: lightweight local builds (Win + Android), no analyzers -->
+  <PropertyGroup Condition="'$(Configuration)' == 'DebugFast'">
+    <LocalTargetFrameworks>net10.0-windows10.0.19041.0;net10.0-android</LocalTargetFrameworks>
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <RunAnalyzersDuringAnalysis>false</RunAnalyzersDuringAnalysis>
+  </PropertyGroup>
 </Project>
