@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
@@ -64,13 +64,17 @@
 	</ItemGroup>
 
         <ItemGroup>
-                <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-                <PackageReference Include="CommunityToolkit.Maui" Version="11.1.1" />
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="CommunityToolkit.Maui" Version="13.0.0" />
 				<PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.8" />
-				<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-				<PackageReference Include="Plugin.Maui.Audio" Version="2.0.0" />
+				<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+				<PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
 				<PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
-                <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.7" />
+                <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.8" />
         </ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NotesCommander.MauiServiceDefaults\NotesCommander.MauiServiceDefaults.csproj" />
+	</ItemGroup>
 	
 </Project>

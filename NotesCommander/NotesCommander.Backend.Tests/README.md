@@ -7,14 +7,7 @@ This project contains functional and integration tests for the NotesCommander ba
 ### Functional Tests
 Tests that require external dependencies like Docker containers or the full application stack.
 
-#### WhisperIntegrationTests (Legacy)
-- **Purpose**: Direct integration tests with Whisper container
-- **Requirements**: Docker running locally
-- **Approach**: Spins up its own Whisper container using Testcontainers
-- **Run**: `dotnet test --filter Category=Functional`
-- **Note**: Tests the WhisperClient directly, bypassing the backend API
-
-#### BackendWhisperIntegrationTests (New)
+#### BackendWhisperIntegrationTests
 - **Purpose**: Integration tests through the backend API using Aspire
 - **Requirements**: Docker running locally
 - **Approach**: 

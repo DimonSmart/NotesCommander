@@ -1,3 +1,5 @@
+using Aspire.Hosting;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Use "tiny" model for testing, "base" for production
@@ -13,8 +15,26 @@ var whisper = builder.AddContainer("whisper", "fedirz/faster-whisper-server", "l
 var backend = builder.AddProject<Projects.NotesCommander_Backend>("notes-backend")
     .WithEnvironment("Whisper__BaseUrl", whisper.GetEndpoint("http"));
 
-// MAUI project cannot be added to AppHost
-// builder.AddProject<Projects.NotesCommander>("notescommander")
-//     .WithReference(backend);
+// Public dev tunnel for mobile simulators/emulators
+var publicDevTunnel = builder.AddDevTunnel("devtunnel-public")
+    .WithAnonymousAccess()
+    .WithReference(backend.GetEndpoint("https"));
+
+// Register MAUI project so Aspire can push service discovery + dev tunnel config
+var mauiApp = builder.AddMauiProject("notescommander", @"../NotesCommander/NotesCommander.csproj");
+
+mauiApp.AddWindowsDevice()
+    .WithReference(backend);
+
+// mauiApp.AddMacCatalystDevice()
+//    .WithReference(backend);
+
+// mauiApp.AddiOSSimulator()
+//    .WithOtlpDevTunnel()
+//    .WithReference(backend, publicDevTunnel);
+
+mauiApp.AddAndroidEmulator()
+    .WithOtlpDevTunnel()
+    .WithReference(backend, publicDevTunnel);
 
 builder.Build().Run();

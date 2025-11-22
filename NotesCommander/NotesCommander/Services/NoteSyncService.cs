@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Channels;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Networking;
 using NotesCommander.Models;
@@ -24,13 +25,16 @@ public sealed class NoteSyncService : IAsyncDisposable
         private readonly Task _uploadWorker;
         private readonly Task _pollingWorker;
         private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
-        private readonly string _fallbackBackendUrl = Environment.GetEnvironmentVariable("NOTESCOMMANDER_BACKEND_URL") ?? "http://localhost:5192";
+        private readonly string _fallbackBackendUrl;
 
-        public NoteSyncService(IVoiceNoteService voiceNoteService, IHttpClientFactory httpClientFactory, ILogger<NoteSyncService> logger)
+        public NoteSyncService(IVoiceNoteService voiceNoteService, IHttpClientFactory httpClientFactory, ILogger<NoteSyncService> logger, IConfiguration configuration)
         {
                 _voiceNoteService = voiceNoteService;
                 _httpClientFactory = httpClientFactory;
                 _logger = logger;
+                _fallbackBackendUrl = configuration["Backend:BaseUrl"]
+                        ?? configuration["NOTESCOMMANDER_BACKEND_URL"]
+                        ?? "https+http://notes-backend";
 
                 Connectivity.Current.ConnectivityChanged += OnConnectivityChanged;
 
