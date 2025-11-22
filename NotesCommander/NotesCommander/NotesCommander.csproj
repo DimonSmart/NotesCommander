@@ -2,19 +2,19 @@
 
     <PropertyGroup>
 
-        <!-- On Unix (Linux/macOS CI) build only Android to avoid missing iOS/MacCatalyst workloads -->
-        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) OR $([MSBuild]::IsOSPlatform('linux'))">
-            net10.0-android
+        <!-- Linux/CI (Codex): build only Windows TFM -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">
+            net10.0-windows10.0.19041.0
         </TargetFrameworks>
 
-        <!-- On Windows keep original multi-targeting (android + ios + maccatalyst) -->
-        <TargetFrameworks Condition="!($([MSBuild]::IsOSPlatform('osx')) OR $([MSBuild]::IsOSPlatform('linux')))">
-            net10.0-android;net10.0-ios;net10.0-maccatalyst
+        <!-- macOS: as you want (usually iOS + MacCatalyst) -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">
+            net10.0-ios;net10.0-maccatalyst
         </TargetFrameworks>
 
-        <!-- Add Windows TFM only on Windows (same as before) -->
+        <!-- Windows dev machine: full multitarget (android + ios + maccatalyst + windows) -->
         <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">
-            $(TargetFrameworks);net10.0-windows10.0.19041.0
+            net10.0-android;net10.0-ios;net10.0-maccatalyst;net10.0-windows10.0.19041.0
         </TargetFrameworks>
 
         <!-- Note for MacCatalyst:
