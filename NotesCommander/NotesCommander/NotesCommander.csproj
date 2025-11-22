@@ -1,8 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
-        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+
+        <!-- On Unix (Linux/macOS CI) build only Android to avoid missing iOS/MacCatalyst workloads -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) OR $([MSBuild]::IsOSPlatform('linux'))">
+            net10.0-android
+        </TargetFrameworks>
+
+        <!-- On Windows keep original multi-targeting (android + ios + maccatalyst) -->
+        <TargetFrameworks Condition="!($([MSBuild]::IsOSPlatform('osx')) OR $([MSBuild]::IsOSPlatform('linux')))">
+            net10.0-android;net10.0-ios;net10.0-maccatalyst
+        </TargetFrameworks>
+
+        <!-- Add Windows TFM only on Windows (same as before) -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">
+            $(TargetFrameworks);net10.0-windows10.0.19041.0
+        </TargetFrameworks>
 
         <!-- Note for MacCatalyst:
         The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
@@ -58,23 +71,23 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-        <PackageReference Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />
+        <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.10" />
+        <PackageReference Include="Microsoft.Maui.Essentials" Version="10.0.10" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     </ItemGroup>
 
-        <ItemGroup>
+    <ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         <PackageReference Include="CommunityToolkit.Maui" Version="13.0.0" />
-                <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.8" />
-                <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-                <PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
-                <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
-                <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.8" />
-        </ItemGroup>
+        <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+        <PackageReference Include="Plugin.Maui.Audio" Version="4.0.0" />
+        <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+        <PackageReference Include="Syncfusion.Maui.Toolkit" Version="1.0.8" />
+    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\NotesCommander.MauiServiceDefaults\NotesCommander.MauiServiceDefaults.csproj" />
     </ItemGroup>
-    
+
 </Project>
