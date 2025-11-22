@@ -4,7 +4,8 @@ using System.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
-using NotesCommander.Models;
+using NotesCommander.Data.Entities;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Data;
 
@@ -24,7 +25,7 @@ public class VoiceNoteRepository
                 await using var connection = new SqliteConnection(Constants.DatabasePath);
                 await connection.OpenAsync(cancellationToken);
 
-                var notes = new List<VoiceNote>();
+                var noteEntities = new List<VoiceNoteEntity>();
                 var selectCmd = connection.CreateCommand();
                 selectCmd.CommandText = @"SELECT Id, Title, AudioFilePath, DurationTicks, OriginalText, RecognizedText, CategoryLabel,
 SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote ORDER BY datetime(CreatedAt) DESC";
@@ -33,31 +34,25 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote ORD
                 {
                         while (await reader.ReadAsync(cancellationToken))
                         {
-                                notes.Add(MapVoiceNote(reader));
+                                noteEntities.Add(MapVoiceNoteEntity(reader));
                         }
                 }
 
-                if (notes.Count == 0)
+                if (noteEntities.Count == 0)
                 {
-                        return notes;
+                        return [];
                 }
 
-                var ids = notes.Select(n => n.LocalId).ToList();
+                var ids = noteEntities.Select(n => n.Id).ToList();
                 var photosLookup = await LoadPhotosAsync(connection, cancellationToken, ids);
                 var tagsLookup = await LoadTagsAsync(connection, cancellationToken, ids);
 
-                foreach (var note in notes)
-                {
-                        if (photosLookup.TryGetValue(note.LocalId, out var photos))
-                        {
-                                note.Photos = photos;
-                        }
-
-                        if (tagsLookup.TryGetValue(note.LocalId, out var tags))
-                        {
-                                note.Tags = tags;
-                        }
-                }
+                var notes = noteEntities
+                        .Select(entity => MapToDomain(
+                                entity,
+                                photosLookup.GetValueOrDefault(entity.Id, []),
+                                tagsLookup.GetValueOrDefault(entity.Id, [])))
+                        .ToList();
 
                 return notes;
         }
@@ -79,15 +74,15 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote WHE
                         return null;
                 }
 
-                var note = MapVoiceNote(reader);
+                var entity = MapVoiceNoteEntity(reader);
 
-                var singleId = new List<int> { note.LocalId };
-                note.Photos = (await LoadPhotosAsync(connection, cancellationToken, singleId))
-                        .GetValueOrDefault(note.LocalId, []);
-                note.Tags = (await LoadTagsAsync(connection, cancellationToken, singleId))
-                        .GetValueOrDefault(note.LocalId, []);
+                var singleId = new List<int> { entity.Id };
+                var photos = (await LoadPhotosAsync(connection, cancellationToken, singleId))
+                        .GetValueOrDefault(entity.Id, []);
+                var tags = (await LoadTagsAsync(connection, cancellationToken, singleId))
+                        .GetValueOrDefault(entity.Id, []);
 
-                return note;
+                return MapToDomain(entity, photos, tags);
         }
 
         public async Task<int> SaveAsync(VoiceNote note, CancellationToken cancellationToken = default)
@@ -104,10 +99,11 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote WHE
                 }
 
                 note.UpdatedAt = DateTime.UtcNow;
+                var entity = MapToEntity(note);
 
                 var upsert = connection.CreateCommand();
                 upsert.Transaction = transaction;
-                if (note.LocalId == 0)
+                if (entity.Id == 0)
                 {
                         upsert.CommandText = @"INSERT INTO VoiceNote (Title, AudioFilePath, DurationTicks, OriginalText, RecognizedText,
 CategoryLabel, SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt)
@@ -119,25 +115,26 @@ SELECT last_insert_rowid();";
                         upsert.CommandText = @"UPDATE VoiceNote SET Title = @title, AudioFilePath = @audio, DurationTicks = @duration,
 OriginalText = @original, RecognizedText = @recognized, CategoryLabel = @category, SyncStatus = @sync, ServerId = @server,
 RecognitionStatus = @recognition, CreatedAt = @createdAt, UpdatedAt = @updatedAt WHERE Id = @id; SELECT @id;";
-                        upsert.Parameters.AddWithValue("@id", note.LocalId);
+                        upsert.Parameters.AddWithValue("@id", entity.Id);
                 }
 
-                upsert.Parameters.AddWithValue("@title", note.Title);
-                upsert.Parameters.AddWithValue("@audio", note.AudioFilePath);
-                upsert.Parameters.AddWithValue("@duration", note.Duration.Ticks);
-                upsert.Parameters.AddWithValue("@original", note.OriginalText ?? (object)DBNull.Value);
-                upsert.Parameters.AddWithValue("@recognized", note.RecognizedText ?? (object)DBNull.Value);
-                upsert.Parameters.AddWithValue("@category", note.CategoryLabel);
-                upsert.Parameters.AddWithValue("@sync", (int)note.SyncStatus);
-                upsert.Parameters.AddWithValue("@server", note.ServerId ?? (object)DBNull.Value);
-                upsert.Parameters.AddWithValue("@recognition", (int)note.RecognitionStatus);
-                upsert.Parameters.AddWithValue("@createdAt", note.CreatedAt.ToString("O"));
-                upsert.Parameters.AddWithValue("@updatedAt", note.UpdatedAt.ToString("O"));
+                upsert.Parameters.AddWithValue("@title", entity.Title);
+                upsert.Parameters.AddWithValue("@audio", entity.AudioFilePath);
+                upsert.Parameters.AddWithValue("@duration", entity.DurationTicks);
+                upsert.Parameters.AddWithValue("@original", entity.OriginalText ?? (object)DBNull.Value);
+                upsert.Parameters.AddWithValue("@recognized", entity.RecognizedText ?? (object)DBNull.Value);
+                upsert.Parameters.AddWithValue("@category", entity.CategoryLabel);
+                upsert.Parameters.AddWithValue("@sync", (int)entity.SyncStatus);
+                upsert.Parameters.AddWithValue("@server", entity.ServerId ?? (object)DBNull.Value);
+                upsert.Parameters.AddWithValue("@recognition", (int)entity.RecognitionStatus);
+                upsert.Parameters.AddWithValue("@createdAt", entity.CreatedAt.ToString("O"));
+                upsert.Parameters.AddWithValue("@updatedAt", entity.UpdatedAt.ToString("O"));
 
                 var insertedIdObj = await upsert.ExecuteScalarAsync(cancellationToken);
-                if (note.LocalId == 0)
+                if (entity.Id == 0)
                 {
-                        note.LocalId = Convert.ToInt32(insertedIdObj);
+                        entity.Id = Convert.ToInt32(insertedIdObj);
+                        note.LocalId = entity.Id;
                 }
 
                 await ReplacePhotosAsync(connection, transaction, note, cancellationToken);
@@ -190,14 +187,14 @@ RecognitionStatus = @recognition, CreatedAt = @createdAt, UpdatedAt = @updatedAt
                 await dropCmd.ExecuteNonQueryAsync();
         }
 
-        private static VoiceNote MapVoiceNote(SqliteDataReader reader)
+        private static VoiceNoteEntity MapVoiceNoteEntity(SqliteDataReader reader)
         {
-                return new VoiceNote
+                return new VoiceNoteEntity
                 {
-                        LocalId = reader.GetInt32(0),
+                        Id = reader.GetInt32(0),
                         Title = reader.GetString(1),
                         AudioFilePath = reader.GetString(2),
-                        Duration = TimeSpan.FromTicks(reader.GetInt64(3)),
+                        DurationTicks = reader.GetInt64(3),
                         OriginalText = reader.IsDBNull(4) ? null : reader.GetString(4),
                         RecognizedText = reader.IsDBNull(5) ? null : reader.GetString(5),
                         CategoryLabel = reader.GetString(6),
@@ -206,6 +203,46 @@ RecognitionStatus = @recognition, CreatedAt = @createdAt, UpdatedAt = @updatedAt
                         RecognitionStatus = (VoiceNoteRecognitionStatus)reader.GetInt32(9),
                         CreatedAt = DateTime.Parse(reader.GetString(10)),
                         UpdatedAt = DateTime.Parse(reader.GetString(11))
+                };
+        }
+
+        private static VoiceNote MapToDomain(VoiceNoteEntity entity, List<VoiceNotePhoto> photos, List<VoiceNoteTag> tags)
+        {
+                return new VoiceNote
+                {
+                        LocalId = entity.Id,
+                        Title = entity.Title,
+                        AudioFilePath = entity.AudioFilePath,
+                        Duration = TimeSpan.FromTicks(entity.DurationTicks),
+                        OriginalText = entity.OriginalText,
+                        RecognizedText = entity.RecognizedText,
+                        CategoryLabel = entity.CategoryLabel,
+                        SyncStatus = entity.SyncStatus,
+                        ServerId = entity.ServerId,
+                        RecognitionStatus = entity.RecognitionStatus,
+                        CreatedAt = entity.CreatedAt,
+                        UpdatedAt = entity.UpdatedAt,
+                        Photos = photos,
+                        Tags = tags
+                };
+        }
+
+        private static VoiceNoteEntity MapToEntity(VoiceNote note)
+        {
+                return new VoiceNoteEntity
+                {
+                        Id = note.LocalId,
+                        Title = note.Title,
+                        AudioFilePath = note.AudioFilePath,
+                        DurationTicks = note.Duration.Ticks,
+                        OriginalText = note.OriginalText,
+                        RecognizedText = note.RecognizedText,
+                        CategoryLabel = note.CategoryLabel,
+                        SyncStatus = note.SyncStatus,
+                        ServerId = note.ServerId,
+                        RecognitionStatus = note.RecognitionStatus,
+                        CreatedAt = note.CreatedAt,
+                        UpdatedAt = note.UpdatedAt
                 };
         }
 

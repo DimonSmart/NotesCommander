@@ -1,7 +1,7 @@
 using System.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Data;
 

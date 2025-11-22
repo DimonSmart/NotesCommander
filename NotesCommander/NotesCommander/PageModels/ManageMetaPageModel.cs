@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NotesCommander.Data;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 using NotesCommander.Services;
 
 namespace NotesCommander.PageModels;
@@ -14,10 +14,10 @@ public partial class ManageMetaPageModel : ObservableObject
     private readonly SeedDataService _seedDataService;
 
 	[ObservableProperty]
-	private ObservableCollection<Category> _categories = [];
+        private ObservableCollection<Category> _categories = [];
 
 	[ObservableProperty]
-	private ObservableCollection<Tag> _tags = [];
+        private ObservableCollection<Tag> _tags = [];
 
 	public ManageMetaPageModel(CategoryRepository categoryRepository, TagRepository tagRepository, SeedDataService seedDataService)
 	{

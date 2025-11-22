@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 
 [JsonSerializable(typeof(VoiceNote))]
 [JsonSerializable(typeof(VoiceNotesSeedPayload))]

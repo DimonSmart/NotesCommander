@@ -1,28 +1,13 @@
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Models;
 
-public enum VoiceNoteRecognitionStatus
+public partial class VoiceNoteViewModel : ObservableObject
 {
-        InQueue = 0,
-        Recognizing = 1,
-        Ready = 2,
-        Error = 3
-}
+        private bool isPlaying;
 
-public enum VoiceNoteSyncStatus
-{
-        LocalOnly,
-        Uploading,
-        Synced,
-        Failed
-}
-
-public class VoiceNote : INotifyPropertyChanged
-{
         public int LocalId { get; set; }
 
         public string Title { get; set; } = string.Empty;
@@ -55,8 +40,6 @@ public class VoiceNote : INotifyPropertyChanged
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        private bool isPlaying;
 
         public string DurationDisplay => Duration == TimeSpan.Zero
                 ? "00:00"
@@ -95,74 +78,45 @@ public class VoiceNote : INotifyPropertyChanged
                 set => SetProperty(ref isPlaying, value);
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-                => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
+        public static VoiceNoteViewModel FromDomain(VoiceNote note)
         {
-                if (EqualityComparer<T>.Default.Equals(storage, value))
+                return new VoiceNoteViewModel
                 {
-                        return false;
-                }
-
-                storage = value;
-                OnPropertyChanged(propertyName);
-                return true;
+                        LocalId = note.LocalId,
+                        Title = note.Title,
+                        AudioFilePath = note.AudioFilePath,
+                        Duration = note.Duration,
+                        OriginalText = note.OriginalText,
+                        RecognizedText = note.RecognizedText,
+                        CategoryLabel = note.CategoryLabel,
+                        RecognitionStatus = note.RecognitionStatus,
+                        SyncStatus = note.SyncStatus,
+                        ServerId = note.ServerId,
+                        Photos = note.Photos.ToList(),
+                        Tags = note.Tags.ToList(),
+                        CreatedAt = note.CreatedAt,
+                        UpdatedAt = note.UpdatedAt
+                };
         }
-}
 
-public class VoiceNotePhoto
-{
-        public int Id { get; set; }
-
-        public int VoiceNoteId { get; set; }
-
-        public string FilePath { get; set; } = string.Empty;
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
-
-public class VoiceNoteTag
-{
-        public int Id { get; set; }
-
-        public int VoiceNoteId { get; set; }
-
-        public string Value { get; set; } = string.Empty;
-}
-
-public class VoiceNoteSeed
-{
-        public string Title { get; set; } = string.Empty;
-
-        public string AudioFile { get; set; } = string.Empty;
-
-        public double DurationSeconds { get; set; }
-                = 0;
-
-        public string? OriginalText { get; set; }
-                = string.Empty;
-
-        public string? RecognizedText { get; set; }
-                = string.Empty;
-
-        public string CategoryLabel { get; set; } = "Входящие";
-
-        public VoiceNoteRecognitionStatus RecognitionStatus { get; set; }
-                = VoiceNoteRecognitionStatus.InQueue;
-
-        public List<string> Photos { get; set; } = [];
-
-        public List<string> Tags { get; set; } = [];
-}
-
-public class VoiceNotesSeedPayload
-{
-        public List<Category> Categories { get; set; } = [];
-
-        public List<Tag> Tags { get; set; } = [];
-
-        public List<VoiceNoteSeed> Notes { get; set; } = [];
+        public VoiceNote ToDomain()
+        {
+                return new VoiceNote
+                {
+                        LocalId = LocalId,
+                        Title = Title,
+                        AudioFilePath = AudioFilePath,
+                        Duration = Duration,
+                        OriginalText = OriginalText,
+                        RecognizedText = RecognizedText,
+                        CategoryLabel = CategoryLabel,
+                        RecognitionStatus = RecognitionStatus,
+                        SyncStatus = SyncStatus,
+                        ServerId = ServerId,
+                        Photos = Photos.ToList(),
+                        Tags = Tags.ToList(),
+                        CreatedAt = CreatedAt,
+                        UpdatedAt = UpdatedAt
+                };
+        }
 }

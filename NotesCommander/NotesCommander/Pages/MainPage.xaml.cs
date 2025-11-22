@@ -21,7 +21,7 @@ public partial class MainPage : ContentPage
 			return;
 		}
 
-		var note = (sender as BindableObject)?.BindingContext as VoiceNote;
+                var note = (sender as BindableObject)?.BindingContext as VoiceNoteViewModel;
 		if (vm.RecordPlayButtonClickCommand.CanExecute(note))
 		{
 			vm.RecordPlayButtonClickCommand.Execute(note);
