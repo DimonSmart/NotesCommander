@@ -1,4 +1,4 @@
-using NotesCommander.Models;
+using NotesCommander.Domain;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 

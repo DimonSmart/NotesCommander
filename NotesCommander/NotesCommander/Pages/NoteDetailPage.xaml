@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:pageModels="clr-namespace:NotesCommander.PageModels"
              xmlns:models="clr-namespace:NotesCommander.Models"
+             xmlns:domain="clr-namespace:NotesCommander.Domain"
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="NotesCommander.Pages.NoteDetailPage"
              x:DataType="pageModels:NoteDetailPageModel"
@@ -42,7 +43,7 @@
                             <LinearItemsLayout Orientation="Horizontal" ItemSpacing="12" />
                         </CollectionView.ItemsLayout>
                         <CollectionView.ItemTemplate>
-                            <DataTemplate x:DataType="models:VoiceNotePhoto">
+                            <DataTemplate x:DataType="domain:VoiceNotePhoto">
                                 <Border WidthRequest="200"
                                         HeightRequest="200"
                                         BackgroundColor="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray900}}">
@@ -133,7 +134,7 @@
                                 AlignItems="Start"
                                 JustifyContent="Start">
                         <BindableLayout.ItemTemplate>
-                            <DataTemplate x:DataType="models:VoiceNoteTag">
+                            <DataTemplate x:DataType="domain:VoiceNoteTag">
                                 <Border Padding="12,6"
                                         Margin="0,0,8,8"
                                         BackgroundColor="{AppThemeBinding Light={StaticResource Primary100}, Dark={StaticResource Primary800}}">

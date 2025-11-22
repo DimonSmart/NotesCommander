@@ -7,7 +7,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Networking;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Services;
 

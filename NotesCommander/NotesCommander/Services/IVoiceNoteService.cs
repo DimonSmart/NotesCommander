@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Services;
 

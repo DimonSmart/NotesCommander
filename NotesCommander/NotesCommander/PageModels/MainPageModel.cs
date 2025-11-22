@@ -15,6 +15,7 @@ using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Media;
 using Microsoft.Maui.Networking;
 using Microsoft.Maui.Storage;
+using NotesCommander.Domain;
 using NotesCommander.Models;
 using NotesCommander.Pages;
 using NotesCommander.Services;
@@ -32,7 +33,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly CancellationTokenSource _statusMonitorCts = new();
         private readonly Timer _recordingTimer = new(1000);
-        private VoiceNote? _currentlyPlayingNote;
+        private VoiceNoteViewModel? _currentlyPlayingNote;
         private bool _isNavigatedTo;
         private bool _dataLoaded;
         private DateTimeOffset? _recordingStartedAt;
@@ -41,7 +42,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private ObservableCollection<VoiceNoteGroup> groupedVoiceNotes = new();
 
         [ObservableProperty]
-        private ObservableCollection<VoiceNote> debugVoiceNotes = new();
+        private ObservableCollection<VoiceNoteViewModel> debugVoiceNotes = new();
 
         [ObservableProperty]
         private bool isBusy;
@@ -106,7 +107,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         if (cmd is null)
                                 return "PlayAudioCommand=null";
 
-                        if (cmd is IAsyncRelayCommand<VoiceNote> asyncCmd)
+                        if (cmd is IAsyncRelayCommand<VoiceNoteViewModel> asyncCmd)
                                 return $"PlayAudioCommand ok (CanExecute={asyncCmd.CanExecute(null)})";
 
                         return $"PlayAudioCommand type: {cmd.GetType().Name}";
@@ -151,7 +152,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         }
 
         [RelayCommand]
-        private void RecordPlayButtonClick(VoiceNote? noteFromButton)
+        private void RecordPlayButtonClick(VoiceNoteViewModel? noteFromButton)
         {
                 PlayButtonClickedCount++;
                 var title = noteFromButton is null || string.IsNullOrWhiteSpace(noteFromButton.Title)
@@ -215,7 +216,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         }
 
         [RelayCommand]
-        private async Task OpenNoteDetail(VoiceNote note)
+        private async Task OpenNoteDetail(VoiceNoteViewModel note)
         {
                 var detailPage = _serviceProvider.GetRequiredService<NoteDetailPage>();
                 var pageModel = _serviceProvider.GetRequiredService<NoteDetailPageModel>();
@@ -226,7 +227,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         
         
         [RelayCommand]
-        private async Task PlayAudio(VoiceNote note)
+        private async Task PlayAudio(VoiceNoteViewModel note)
         {
                 try
                 {
@@ -300,7 +301,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 }
         }
 
-        private bool IsNoteCurrentlyPlaying(VoiceNote note)
+        private bool IsNoteCurrentlyPlaying(VoiceNoteViewModel note)
         {
                 if (_currentlyPlayingNote is null || note is null)
                 {
@@ -320,7 +321,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 return false;
         }
 
-        private void SetCurrentPlayingNote(VoiceNote note)
+        private void SetCurrentPlayingNote(VoiceNoteViewModel note)
         {
                 if (_currentlyPlayingNote is not null && _currentlyPlayingNote != note)
                 {
@@ -520,16 +521,21 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         IsBusy = true;
                         var notes = await _voiceNoteService.GetNotesAsync();
                         System.Diagnostics.Debug.WriteLine($"[LoadNotesAsync] Loaded {notes.Count} notes from service");
-                        
+
                         if (notes.Count == 0)
                         {
                                 GroupedVoiceNotes = new ObservableCollection<VoiceNoteGroup>();
                                 System.Diagnostics.Debug.WriteLine("[LoadNotesAsync] No notes found, cleared collection");
                                 return;
                         }
-                        
+
+                        var viewModels = notes
+                                .Select(VoiceNoteViewModel.FromDomain)
+                                .OrderByDescending(n => n.CreatedAt)
+                                .ToList();
+
                         // Группировка по датам
-                        var grouped = notes
+                        var grouped = viewModels
                                 .GroupBy(n => n.CreatedAt.Date)
                                 .OrderByDescending(g => g.Key)
                                 .Select(g => new VoiceNoteGroup(
@@ -577,7 +583,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         CreateDebugNote("Утренний stand-up", TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(20), VoiceNoteRecognitionStatus.Recognizing, samplePath, now.AddHours(-5))
                 };
 
-                DebugVoiceNotes = new ObservableCollection<VoiceNote>(samples);
+                DebugVoiceNotes = new ObservableCollection<VoiceNoteViewModel>(samples.Select(VoiceNoteViewModel.FromDomain));
         }
 
         private static VoiceNote CreateDebugNote(string title, TimeSpan duration, VoiceNoteRecognitionStatus status, string audioPath, DateTime timestamp)

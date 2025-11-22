@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NotesCommander.Domain;
 using NotesCommander.Models;
 
 namespace NotesCommander.PageModels;
@@ -8,7 +9,7 @@ namespace NotesCommander.PageModels;
 public partial class NoteDetailPageModel : ObservableObject
 {
 	[ObservableProperty]
-	private VoiceNote? currentNote;
+        private VoiceNoteViewModel? currentNote;
 
 	[ObservableProperty]
 	private ObservableCollection<VoiceNotePhoto> photos = new();
@@ -20,10 +21,10 @@ public partial class NoteDetailPageModel : ObservableObject
 		? $"{(int)CurrentNote!.Duration.TotalMinutes}:{CurrentNote.Duration.Seconds:D2}"
 		: "0:00";
 
-	public void LoadNote(VoiceNote note)
-	{
-		CurrentNote = note;
-		Photos = new ObservableCollection<VoiceNotePhoto>(note.Photos);
+        public void LoadNote(VoiceNoteViewModel note)
+        {
+                CurrentNote = note;
+                Photos = new ObservableCollection<VoiceNotePhoto>(note.Photos);
 		OnPropertyChanged(nameof(AudioDurationDisplay));
 	}
 

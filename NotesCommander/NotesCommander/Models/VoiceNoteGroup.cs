@@ -2,15 +2,15 @@ using System.Collections.ObjectModel;
 
 namespace NotesCommander.Models;
 
-public class VoiceNoteGroup : ObservableCollection<VoiceNote>
+public class VoiceNoteGroup : ObservableCollection<VoiceNoteViewModel>
 {
-	public string DateGroupKey { get; }
-	public string DateGroupDisplay { get; }
+        public string DateGroupKey { get; }
+        public string DateGroupDisplay { get; }
 
-	public VoiceNoteGroup(string dateGroupKey, string dateGroupDisplay, IEnumerable<VoiceNote> notes)
-		: base(notes)
-	{
-		DateGroupKey = dateGroupKey;
+        public VoiceNoteGroup(string dateGroupKey, string dateGroupDisplay, IEnumerable<VoiceNoteViewModel> notes)
+                : base(notes)
+        {
+                DateGroupKey = dateGroupKey;
 		DateGroupDisplay = dateGroupDisplay;
 	}
 }

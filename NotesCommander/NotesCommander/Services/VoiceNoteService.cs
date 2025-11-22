@@ -1,5 +1,5 @@
 using NotesCommander.Data;
-using NotesCommander.Models;
+using NotesCommander.Domain;
 
 namespace NotesCommander.Services;
 
