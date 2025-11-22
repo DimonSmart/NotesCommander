@@ -14,29 +14,6 @@ public partial class MainPage : ContentPage
 		BindingContext = _model;
 	}
 
-	private async void OnPlayButtonClicked(object? sender, EventArgs e)
-	{
-		if (BindingContext is not MainPageModel vm)
-		{
-			return;
-		}
-
-                var note = (sender as BindableObject)?.BindingContext as VoiceNoteViewModel;
-		if (vm.RecordPlayButtonClickCommand.CanExecute(note))
-		{
-			vm.RecordPlayButtonClickCommand.Execute(note);
-		}
-
-		if (vm.PlayAudioCommand.CanExecute(note))
-		{
-			await vm.PlayAudioCommand.ExecuteAsync(note);
-		}
-		else
-		{
-			vm.LastPlayAudioStatus = "PlayAudioCommand.CanExecute returned false";
-		}
-	}
-
 	protected override async void OnAppearing()
 	{
 		base.OnAppearing();

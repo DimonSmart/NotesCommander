@@ -1,6 +1,7 @@
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using NotesCommander.Domain;
+using System.Linq;
 
 namespace NotesCommander.Models;
 
@@ -118,5 +119,83 @@ public partial class VoiceNoteViewModel : ObservableObject
                         CreatedAt = CreatedAt,
                         UpdatedAt = UpdatedAt
                 };
+        }
+
+        [RelayCommand]
+        private async Task PlayAudio()
+        {
+            var mainModel = MauiProgram.Resvices.GetService<MainPageModel>()!;
+            VoiceNoteViewModel note = this;
+
+            try
+            {
+                if (note is null)
+                {
+                    mainModel.LastPlayAudioStatus = "Parameter note is null";
+                    await AppShell.DisplaySnackbarAsync("Cannot play this note");
+                    return;
+                }
+
+                mainModel.PlayAudioInvokedCount++;
+                var title = string.IsNullOrWhiteSpace(note.Title) ? "(Untitled)" : note.Title;
+                var switchingFromOtherNote = !mainModel.IsNoteCurrentlyPlaying(note);
+
+                if (mainModel.IsNoteCurrentlyPlaying(note))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stopping playback for note: {title}");
+                    mainModel.StopCurrentPlayback();
+                    mainModel.LastPlayAudioStatus = $"Stopped: {title}";
+                    return;
+                }
+
+                if (switchingFromOtherNote)
+                {
+                    System.Diagnostics.Debug.WriteLine("[PlayAudio] Switching to another note, stopping the current one first");
+                    mainModel.StopCurrentPlayback();
+                }
+
+                mainModel.LastPlayAudioStatus = $"Clicked: {title} @ {DateTime.Now:T}";
+
+                System.Diagnostics.Debug.WriteLine($"[PlayAudio] Starting playback for note: {title}");
+                System.Diagnostics.Debug.WriteLine($"[PlayAudio] Audio file path: {note.AudioFilePath}");
+
+                if (string.IsNullOrEmpty(note.AudioFilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine("[PlayAudio] ERROR: AudioFilePath is null or empty");
+                    mainModel.LastPlayAudioStatus = "File path missing";
+                    await AppShell.DisplaySnackbarAsync("Missing audio file path");
+                    return;
+                }
+
+                if (!File.Exists(note.AudioFilePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: File does not exist: {note.AudioFilePath}");
+                    mainModel.LastPlayAudioStatus = "File not found";
+                    await AppShell.DisplaySnackbarAsync("Audio file not found");
+                    return;
+                }
+
+                var fileInfo = new FileInfo(note.AudioFilePath);
+                System.Diagnostics.Debug.WriteLine($"[PlayAudio] File size: {fileInfo.Length} bytes");
+
+                mainModel.StopCurrentPlayback();
+
+                System.Diagnostics.Debug.WriteLine("[PlayAudio] Calling audio playback service...");
+                await mainModel.AudioPlaybackService.PlayAsync(note.AudioFilePath);
+                mainModel.SetCurrentPlayingNote(note);
+
+                System.Diagnostics.Debug.WriteLine("[PlayAudio] Playback started successfully");
+                mainModel.LastPlayAudioStatus = $"Started: {note.Title}";
+                await AppShell.DisplayToastAsync($"Playing: {note.Title}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PlayAudio] ERROR: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[PlayAudio] Stack trace: {ex.StackTrace}");
+                mainModel.ErrorHandler.HandleError(ex);
+                mainModel.LastPlayAudioStatus = $"Error: {ex.Message}";
+                await AppShell.DisplaySnackbarAsync($"Playback error: {ex.Message}");
+                mainModel.StopCurrentPlayback();
+            }
         }
 }

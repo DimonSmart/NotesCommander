@@ -10,6 +10,7 @@ namespace NotesCommander;
 
 public static class MauiProgram
 {
+    public static IServiceProvider Resvices { get; private set; }
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
@@ -85,6 +86,7 @@ public static class MauiProgram
         builder.Services.AddTransient<NoteDetailPage>();
 
         var app = builder.Build();
+        Resvices = app.Services;
         _ = app.Services.GetRequiredService<NoteSyncService>();
 
         return app;
