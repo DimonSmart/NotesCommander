@@ -14,7 +14,9 @@
   <Project Path="NotesCommander.MauiServiceDefaults/NotesCommander.MauiServiceDefaults.csproj">
     <BuildType Solution="DebugFast|*" Project="Debug" />
   </Project>
-  <Project Path="NotesCommander/NotesCommander.csproj" />
+  <Project Path="NotesCommander/NotesCommander.csproj">
+    <Deploy Solution="DebugFast|*" />
+  </Project>
   <Project Path="NotesCommander.Backend.FuncTests/NotesCommander.Backend.FuncTests.csproj">
     <BuildType Solution="DebugFast|*" Project="Debug" />
     <Build Solution="DebugFast|*" Project="false" />
