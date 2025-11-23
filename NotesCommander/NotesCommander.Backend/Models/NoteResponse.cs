@@ -18,14 +18,4 @@ public sealed class NoteResponse
     public string? ErrorMessage { get; init; }
         = string.Empty;
 
-    public static NoteResponse FromRecord(NoteRecord record)
-        => new()
-        {
-            Id = record.Id,
-            Title = record.Title,
-            CategoryLabel = record.CategoryLabel,
-            RecognizedText = record.RecognizedText,
-            RecognitionStatus = record.RecognitionStatus,
-            ErrorMessage = record.ErrorMessage
-        };
 }

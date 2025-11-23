@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NotesCommander.Backend.Models;
+using NotesCommander.Backend.Mappers;
 using NotesCommander.Backend.Services;
 using NotesCommander.Backend.Storage;
 
@@ -62,7 +63,7 @@ public static class NotesApiExtensions
         };
 
         var savedNote = await store.CreateAsync(note, cancellationToken);
-        var response = NoteResponse.FromRecord(savedNote);
+        var response = NoteMapper.ToResponse(savedNote);
 
         return TypedResults.Created($"/notes/{savedNote.Id}", response);
     }
@@ -80,13 +81,13 @@ public static class NotesApiExtensions
 
         if (note.RecognitionStatus is NoteRecognitionStatus.Completed or NoteRecognitionStatus.Recognizing)
         {
-            return TypedResults.Ok(NoteResponse.FromRecord(note));
+            return TypedResults.Ok(NoteMapper.ToResponse(note));
         }
 
         await store.UpdateStatusAsync(id, NoteRecognitionStatus.Queued, null, null, null, cancellationToken);
         note = await store.GetAsync(id, cancellationToken);
 
-        return TypedResults.Ok(NoteResponse.FromRecord(note!));
+        return TypedResults.Ok(NoteMapper.ToResponse(note!));
     }
 
     private static async Task<Results<Ok<NoteResponse>, NotFound>> GetNoteAsync(
@@ -97,6 +98,6 @@ public static class NotesApiExtensions
         var note = await store.GetAsync(id, cancellationToken);
         return note is null
             ? TypedResults.NotFound()
-            : TypedResults.Ok(NoteResponse.FromRecord(note));
+            : TypedResults.Ok(NoteMapper.ToResponse(note));
     }
 }

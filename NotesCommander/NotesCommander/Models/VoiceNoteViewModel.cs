@@ -79,48 +79,6 @@ public partial class VoiceNoteViewModel : ObservableObject
                 set => SetProperty(ref isPlaying, value);
         }
 
-        public static VoiceNoteViewModel FromDomain(VoiceNote note)
-        {
-                return new VoiceNoteViewModel
-                {
-                        LocalId = note.LocalId,
-                        Title = note.Title,
-                        AudioFilePath = note.AudioFilePath,
-                        Duration = note.Duration,
-                        OriginalText = note.OriginalText,
-                        RecognizedText = note.RecognizedText,
-                        CategoryLabel = note.CategoryLabel,
-                        RecognitionStatus = note.RecognitionStatus,
-                        SyncStatus = note.SyncStatus,
-                        ServerId = note.ServerId,
-                        Photos = note.Photos.ToList(),
-                        Tags = note.Tags.ToList(),
-                        CreatedAt = note.CreatedAt,
-                        UpdatedAt = note.UpdatedAt
-                };
-        }
-
-        public VoiceNote ToDomain()
-        {
-                return new VoiceNote
-                {
-                        LocalId = LocalId,
-                        Title = Title,
-                        AudioFilePath = AudioFilePath,
-                        Duration = Duration,
-                        OriginalText = OriginalText,
-                        RecognizedText = RecognizedText,
-                        CategoryLabel = CategoryLabel,
-                        RecognitionStatus = RecognitionStatus,
-                        SyncStatus = SyncStatus,
-                        ServerId = ServerId,
-                        Photos = Photos.ToList(),
-                        Tags = Tags.ToList(),
-                        CreatedAt = CreatedAt,
-                        UpdatedAt = UpdatedAt
-                };
-        }
-
         [RelayCommand]
         private async Task PlayAudio()
         {
