@@ -17,6 +17,7 @@ using Microsoft.Maui.Networking;
 using Microsoft.Maui.Storage;
 using NotesCommander.Domain;
 using NotesCommander.Models;
+using NotesCommander.Mappers;
 using NotesCommander.Pages;
 using NotesCommander.Services;
 
@@ -454,7 +455,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         }
 
                         var viewModels = notes
-                                .Select(VoiceNoteViewModel.FromDomain)
+                                .Select(VoiceNoteMapper.ToViewModel)
                                 .OrderByDescending(n => n.CreatedAt)
                                 .ToList();
 
@@ -507,7 +508,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                         CreateDebugNote("Утренний stand-up", TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(20), VoiceNoteRecognitionStatus.Recognizing, samplePath, now.AddHours(-5))
                 };
 
-                DebugVoiceNotes = new ObservableCollection<VoiceNoteViewModel>(samples.Select(VoiceNoteViewModel.FromDomain));
+                DebugVoiceNotes = new ObservableCollection<VoiceNoteViewModel>(samples.Select(VoiceNoteMapper.ToViewModel));
         }
 
         private static VoiceNote CreateDebugNote(string title, TimeSpan duration, VoiceNoteRecognitionStatus status, string audioPath, DateTime timestamp)

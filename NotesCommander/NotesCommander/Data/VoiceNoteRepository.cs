@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using NotesCommander.Data.Entities;
 using NotesCommander.Domain;
+using NotesCommander.Mappers;
 
 namespace NotesCommander.Data;
 
@@ -48,8 +49,7 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote ORD
                 var tagsLookup = await LoadTagsAsync(connection, cancellationToken, ids);
 
                 var notes = noteEntities
-                        .Select(entity => MapToDomain(
-                                entity,
+                        .Select(entity => entity.ToDomain(
                                 photosLookup.GetValueOrDefault(entity.Id, []),
                                 tagsLookup.GetValueOrDefault(entity.Id, [])))
                         .ToList();
@@ -82,7 +82,7 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote WHE
                 var tags = (await LoadTagsAsync(connection, cancellationToken, singleId))
                         .GetValueOrDefault(entity.Id, []);
 
-                return MapToDomain(entity, photos, tags);
+                return entity.ToDomain(photos, tags);
         }
 
         public async Task<int> SaveAsync(VoiceNote note, CancellationToken cancellationToken = default)
@@ -99,7 +99,7 @@ SyncStatus, ServerId, RecognitionStatus, CreatedAt, UpdatedAt FROM VoiceNote WHE
                 }
 
                 note.UpdatedAt = DateTime.UtcNow;
-                var entity = MapToEntity(note);
+                var entity = note.ToEntity();
 
                 var upsert = connection.CreateCommand();
                 upsert.Transaction = transaction;
@@ -203,46 +203,6 @@ RecognitionStatus = @recognition, CreatedAt = @createdAt, UpdatedAt = @updatedAt
                         RecognitionStatus = (VoiceNoteRecognitionStatus)reader.GetInt32(9),
                         CreatedAt = DateTime.Parse(reader.GetString(10)),
                         UpdatedAt = DateTime.Parse(reader.GetString(11))
-                };
-        }
-
-        private static VoiceNote MapToDomain(VoiceNoteEntity entity, List<VoiceNotePhoto> photos, List<VoiceNoteTag> tags)
-        {
-                return new VoiceNote
-                {
-                        LocalId = entity.Id,
-                        Title = entity.Title,
-                        AudioFilePath = entity.AudioFilePath,
-                        Duration = TimeSpan.FromTicks(entity.DurationTicks),
-                        OriginalText = entity.OriginalText,
-                        RecognizedText = entity.RecognizedText,
-                        CategoryLabel = entity.CategoryLabel,
-                        SyncStatus = entity.SyncStatus,
-                        ServerId = entity.ServerId,
-                        RecognitionStatus = entity.RecognitionStatus,
-                        CreatedAt = entity.CreatedAt,
-                        UpdatedAt = entity.UpdatedAt,
-                        Photos = photos,
-                        Tags = tags
-                };
-        }
-
-        private static VoiceNoteEntity MapToEntity(VoiceNote note)
-        {
-                return new VoiceNoteEntity
-                {
-                        Id = note.LocalId,
-                        Title = note.Title,
-                        AudioFilePath = note.AudioFilePath,
-                        DurationTicks = note.Duration.Ticks,
-                        OriginalText = note.OriginalText,
-                        RecognizedText = note.RecognizedText,
-                        CategoryLabel = note.CategoryLabel,
-                        SyncStatus = note.SyncStatus,
-                        ServerId = note.ServerId,
-                        RecognitionStatus = note.RecognitionStatus,
-                        CreatedAt = note.CreatedAt,
-                        UpdatedAt = note.UpdatedAt
                 };
         }
 
