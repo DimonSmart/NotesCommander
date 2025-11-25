@@ -15,9 +15,16 @@
     <Configurations>Debug;Release;DebugFast</Configurations>
   </PropertyGroup>
 
-  <!-- DebugFast: lightweight local builds (Win + Android), no analyzers -->
+  <!-- Enable incremental build for better performance -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- DebugFast: lightweight local builds (Win only), no analyzers -->
   <PropertyGroup Condition="'$(Configuration)' == 'DebugFast'">
-    <LocalTargetFrameworks>net10.0-windows10.0.19041.0;net10.0-android</LocalTargetFrameworks>
+    <LocalTargetFrameworks>net10.0-windows10.0.19041.0</LocalTargetFrameworks>
     <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
     <RunAnalyzersDuringAnalysis>false</RunAnalyzersDuringAnalysis>
   </PropertyGroup>
