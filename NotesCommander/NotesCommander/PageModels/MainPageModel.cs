@@ -222,6 +222,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 var detailPage = _serviceProvider.GetRequiredService<NoteDetailPage>();
                 var pageModel = _serviceProvider.GetRequiredService<NoteDetailPageModel>();
                 pageModel.LoadNote(note);
+                detailPage.BindingContext = pageModel;
                 await Shell.Current.Navigation.PushModalAsync(detailPage);
         }
 
@@ -412,6 +413,12 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 {
                         _errorHandler.HandleError(ex);
                 }
+        }
+
+        [RelayCommand]
+        private async Task CancelMetadata()
+        {
+            await Shell.Current.Navigation.PopModalAsync();
         }
 
         public void Dispose()

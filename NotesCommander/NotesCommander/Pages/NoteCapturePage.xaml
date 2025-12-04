@@ -66,10 +66,14 @@
                     </HorizontalStackLayout>
                 </ScrollView>
             </VerticalStackLayout>
-
-            <Button Text="Сохранить голосовую заметку"
-                    HeightRequest="48"
-                    Command="{Binding SaveMetadataCommand}" />
+            <Grid ColumnDefinitions="*,*"
+                  ColumnSpacing="12">
+                <Button Text="Отказаться"
+                        Command="{Binding CancelMetadataCommand}" />
+                <Button Grid.Column="1"
+                        Text="Сохранить голосовую заметку"
+                        Command="{Binding SaveMetadataCommand}" />
+            </Grid>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
