@@ -10,6 +10,7 @@ public partial class NoteCapturePage : ContentPage
         {
                 InitializeComponent();
                 _model = model;
+                _model.currentNote = new Models.VoiceNoteViewModel();
                 BindingContext = _model;
         }
 

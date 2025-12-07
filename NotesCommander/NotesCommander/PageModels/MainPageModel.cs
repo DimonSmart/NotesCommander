@@ -38,6 +38,7 @@ public partial class MainPageModel : ObservableObject, IDisposable
         private bool _isNavigatedTo;
         private bool _dataLoaded;
         private DateTimeOffset? _recordingStartedAt;
+        private string? _currentRecordingPath;
 
         public IAudioPlaybackService AudioPlaybackService => _audioPlaybackService;
         public IErrorHandler ErrorHandler => _errorHandler;
@@ -58,6 +59,13 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [NotifyPropertyChangedFor(nameof(RecordingStatusText))]
         [NotifyPropertyChangedFor(nameof(RecordingButtonText))]
         private bool isRecording;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RecordingButtonText))]
+        private bool isPlaying;
+
+        [ObservableProperty]
+        public VoiceNoteViewModel? currentNote;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RecordingDurationDisplay))]
@@ -305,13 +313,133 @@ public partial class MainPageModel : ObservableObject, IDisposable
         [RelayCommand]
         private async Task ToggleRecording()
         {
+            //if (IsRecording)
+            //{
+            //        StopRecording();
+            //        return;
+            //}
+
+            //StartRecording();
+
+            //if (CurrentNote is null)
+            //{
+            //    await AppShell.DisplaySnackbarAsync("Нечего воспроизводить");
+            //    return;
+            //}
+
+            try
+            {
+                // Если идёт запись, остановить её
                 if (IsRecording)
                 {
-                        StopRecording();
-                        return;
+                    await StopRecordingAsync();
+                    return;
                 }
 
-                StartRecording();
+                // Если идёт воспроизведение, остановить его
+                if (IsPlaying)
+                {
+                    _audioPlaybackService.Stop();
+                    IsPlaying = false;
+                    return;
+                }
+
+                // Если нет файла для воспроизведения, начать запись
+                if (string.IsNullOrEmpty(CurrentNote.AudioFilePath))
+                {
+                    await StartRecordingAsync();
+                    return;
+                }
+
+                // Воспроизвести существующий файл
+                await PlayAudioAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] ERROR in ToggleAudioPlayback: {ex.Message}");
+                _errorHandler.HandleError(ex);
+                await AppShell.DisplaySnackbarAsync($"Ошибка: {ex.Message}");
+            }
+        }
+
+        private async Task StartRecordingAsync()
+        {
+            if (CurrentNote is null)
+            {
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[NoteDetailPageModel] Starting recording...");
+
+                // Генерируем путь для нового аудиофайла
+                _currentRecordingPath = GenerateAudioFilePath();
+
+                await _audioPlaybackService.StartRecordingAsync(_currentRecordingPath);
+                IsRecording = true;
+
+                await AppShell.DisplayToastAsync("Запись началась");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] ERROR: {ex.Message}");
+                IsRecording = false;
+                _currentRecordingPath = null;
+                throw;
+            }
+        }
+
+        private async Task PlayAudioAsync()
+        {
+            if (CurrentNote?.AudioFilePath is null)
+            {
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] Starting playback: {CurrentNote.AudioFilePath}");
+                await _audioPlaybackService.PlayAsync(CurrentNote.AudioFilePath);
+                IsPlaying = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] ERROR: {ex.Message}");
+                IsPlaying = false;
+                throw;
+            }
+        }
+
+        private async Task StopRecordingAsync()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[NoteDetailPageModel] Stopping recording...");
+
+                await _audioPlaybackService.StopRecordingAsync();
+                IsRecording = false;
+
+                // Сохраняем путь записанного файла в модель
+                if (!string.IsNullOrEmpty(_currentRecordingPath) && CurrentNote is not null)
+                {
+                    CurrentNote.AudioFilePath = _currentRecordingPath;
+                    System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] Saved recording path: {_currentRecordingPath}");
+                    await AppShell.DisplayToastAsync("Запись сохранена");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] ERROR: {ex.Message}");
+                IsRecording = false;
+                throw;
+            }
+        }
+
+        private static string GenerateAudioFilePath()
+        {
+            var fileName = $"voice-note-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.m4a";
+            return Path.Combine(FileSystem.AppDataDirectory, fileName);
         }
 
         [RelayCommand]
