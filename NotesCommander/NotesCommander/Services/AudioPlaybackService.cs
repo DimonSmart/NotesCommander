@@ -126,7 +126,7 @@ public class AudioPlaybackService : IAudioPlaybackService
                 CurrentRecordingPath = outputFilePath;
 
                 // Start recording
-                await _currentRecorder.StartAsync();
+                await _currentRecorder.StartAsync(CurrentRecordingPath);
 
                 System.Diagnostics.Debug.WriteLine($"[AudioPlaybackService] Recording started successfully");
                 RecordingStateChanged?.Invoke(this, new RecordingStateChangedEventArgs(true, outputFilePath));

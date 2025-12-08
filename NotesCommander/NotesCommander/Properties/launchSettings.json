@@ -13,6 +13,13 @@
         "Backend__BaseUrl": "http://10.0.2.2:62743"
       },
       "nativeDebugging": false
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {
+        "Backend__BaseUrl": "http://localhost:62743"
+      },
+      "distributionName": ""
     }
   }
 }

@@ -321,11 +321,11 @@ public partial class MainPageModel : ObservableObject, IDisposable
 
             //StartRecording();
 
-            //if (CurrentNote is null)
-            //{
-            //    await AppShell.DisplaySnackbarAsync("Нечего воспроизводить");
-            //    return;
-            //}
+            if (CurrentNote is null)
+            {
+                await AppShell.DisplaySnackbarAsync("Нечего воспроизводить");
+                return;
+            }
 
             try
             {
@@ -347,6 +347,8 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 // Если нет файла для воспроизведения, начать запись
                 if (string.IsNullOrEmpty(CurrentNote.AudioFilePath))
                 {
+                    _currentRecordingPath = GenerateAudioFilePath();
+                    CurrentNote.AudioFilePath = _currentRecordingPath;
                     await StartRecordingAsync();
                     return;
                 }
@@ -374,9 +376,9 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 System.Diagnostics.Debug.WriteLine("[NoteDetailPageModel] Starting recording...");
 
                 // Генерируем путь для нового аудиофайла
-                _currentRecordingPath = GenerateAudioFilePath();
+                //_currentRecordingPath = GenerateAudioFilePath();
 
-                await _audioPlaybackService.StartRecordingAsync(_currentRecordingPath);
+                await _audioPlaybackService.StartRecordingAsync(CurrentNote.AudioFilePath);
                 IsRecording = true;
 
                 await AppShell.DisplayToastAsync("Запись началась");
@@ -420,10 +422,13 @@ public partial class MainPageModel : ObservableObject, IDisposable
                 await _audioPlaybackService.StopRecordingAsync();
                 IsRecording = false;
 
+                if (!File.Exists(CurrentNote.AudioFilePath))
+                    System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] file not exists: {_currentRecordingPath}");
+
                 // Сохраняем путь записанного файла в модель
-                if (!string.IsNullOrEmpty(_currentRecordingPath) && CurrentNote is not null)
+                if (!string.IsNullOrEmpty(CurrentNote.AudioFilePath) && CurrentNote is not null)
                 {
-                    CurrentNote.AudioFilePath = _currentRecordingPath;
+                    //CurrentNote.AudioFilePath = _currentRecordingPath;
                     System.Diagnostics.Debug.WriteLine($"[NoteDetailPageModel] Saved recording path: {_currentRecordingPath}");
                     await AppShell.DisplayToastAsync("Запись сохранена");
                 }
