@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <UseMaui>true</UseMaui>
@@ -72,7 +72,7 @@
     <AndroidUseSharedRuntime>true</AndroidUseSharedRuntime>
     <AndroidFastDeploymentType>Assemblies:Dexes</AndroidFastDeploymentType>
     <!-- Restrict ABI for the current test device; switch to android-x64 for emulator -->
-    <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
+	<RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
     <!-- Keep debug lightweight -->
     <RunAOTCompilation>false</RunAOTCompilation>
     <AndroidLinkMode>None</AndroidLinkMode>
